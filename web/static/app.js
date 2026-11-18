@@ -163,8 +163,10 @@
         method: "POST",
         body: JSON.stringify({ token: els.loginToken.value.trim() }),
       });
-      els.login.hidden = true;
       els.loginToken.value = "";
+      els.login.hidden = true;
+      // Ceinture et bretelles : on retire la fenêtre du DOM, quel que soit le CSS.
+      els.login.remove();
       await start();
     } catch (_) {
       els.loginError.textContent = "Mot de passe incorrect.";
