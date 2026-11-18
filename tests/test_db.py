@@ -64,3 +64,22 @@ def test_session_upsert_keeps_language():
     chat_store.touch_session("sess-lang")
     rows = db.run("SELECT lang FROM sessions WHERE session_id = ?", ("sess-lang",))
     assert rows[0]["lang"] == "ar"
+
+
+def test_fallback_to_sqlite_keeps_app_alive(monkeypatch):
+    """Une base distante injoignable ne doit pas empêcher l'application de tourner."""
+    import importlib
+    import db as db_module
+    import chat_store as store
+
+    monkeypatch.setattr(db_module, "DATABASE_URL", "postgresql://u:p@postgres.railway.internal:5432/railway")
+    assert db_module.backend() == "postgres"
+
+    try:
+        store.init_db()  # échoue réellement (hôte inexistant) puis bascule
+    except Exception:
+        pass
+    assert db_module.backend() == "sqlite"
+    assert db_module.describe()["backend"] == "sqlite"
+    store.touch_session("fallback-session")
+    assert store.stats()["sessions"] >= 1

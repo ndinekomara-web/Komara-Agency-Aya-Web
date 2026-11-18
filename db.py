@@ -21,12 +21,27 @@ logger = logging.getLogger("aya.db")
 
 DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip()
 _lock = threading.Lock()
-_pg_ready = False
+_forced_sqlite = False
+_fallback_reason: str | None = None
 
 
 def backend() -> str:
     """Retourne ``postgres`` si une base distante est configurée, sinon ``sqlite``."""
+    if _forced_sqlite:
+        return "sqlite"
     return "postgres" if DATABASE_URL else "sqlite"
+
+
+def fallback_to_sqlite(reason: str) -> None:
+    """Bascule sur SQLite quand PostgreSQL est injoignable.
+
+    L'application doit rester en ligne même si la base distante est mal
+    configurée : mieux vaut perdre la persistance que refuser le service.
+    """
+    global _forced_sqlite, _fallback_reason
+    _forced_sqlite = True
+    _fallback_reason = reason
+    logger.error("PostgreSQL injoignable (%s) : bascule sur SQLite", reason)
 
 
 def describe() -> dict[str, Any]:
@@ -38,7 +53,11 @@ def describe() -> dict[str, Any]:
         "backend": "sqlite",
         "path": SQLITE_DB_PATH,
         "configured": False,
-        "hint": "DATABASE_URL absent : ajoutez une référence au service PostgreSQL",
+        "hint": (
+            f"PostgreSQL configuré mais injoignable ({_fallback_reason})"
+            if _fallback_reason
+            else "DATABASE_URL absent : ajoutez une référence au service PostgreSQL"
+        ),
     }
 
 
@@ -87,7 +106,7 @@ def _sqlite_connect() -> sqlite3.Connection:
 # ---------------------------------------------------------------------------
 # PostgreSQL
 # ---------------------------------------------------------------------------
-def _pg_connect(attempts: int = 5):
+def _pg_connect(attempts: int = 3):
     """Connexion PostgreSQL avec quelques tentatives (la base peut démarrer
     après l'application sur Railway)."""
     import psycopg2
@@ -111,7 +130,7 @@ def _pg_connect(attempts: int = 5):
             return connection
         except Exception as exc:  # pragma: no cover - dépend du réseau
             last_error = exc
-            wait = min(2 ** attempt, 15)
+            wait = min(2 ** attempt, 3)
             logger.warning(
                 "PostgreSQL indisponible (tentative %s/%s) : %s — nouvelle tentative dans %ss",
                 attempt + 1,

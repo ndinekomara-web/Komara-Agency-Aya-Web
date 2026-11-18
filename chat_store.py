@@ -81,6 +81,14 @@ def _schema() -> list[str]:
 
 
 def init_db() -> None:
+    """Crée les tables, en basculant sur SQLite si PostgreSQL est injoignable."""
+    try:
+        db.run_many(_schema())
+        return
+    except Exception as exc:
+        if db.backend() != "postgres":
+            raise
+        db.fallback_to_sqlite(str(exc).splitlines()[0][:160])
     db.run_many(_schema())
 
 
