@@ -61,6 +61,11 @@ de santé (`/api/health`).
 
 1. Sur [railway.app](https://railway.app), **New Project → Deploy from GitHub repo**,
    puis choisissez `Komara-Agency-Aya-Web`.
+
+   > La commande de démarrage est `python app.py` : l'application lit elle-même
+   > la variable `PORT`. N'utilisez pas `uvicorn --port $PORT` dans Railway,
+   > qui passe la valeur littérale et provoque
+   > `Invalid value for '--port'`.
 2. **Settings → Networking → Generate Domain** : vous obtenez une adresse HTTPS.
    C'est celle que le téléphone ouvrira.
 3. **Variables** (Settings → Variables) :
