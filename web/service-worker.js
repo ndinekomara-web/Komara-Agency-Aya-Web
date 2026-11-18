@@ -1,6 +1,9 @@
-/* Service worker minimal : l'application reste ouvrable hors ligne,
-   les messages nécessitent évidemment une connexion. */
-const CACHE = "aya-shell-v1";
+/* Service worker d'Aya.
+   Stratégie : le réseau d'abord pour la page et les scripts (on a toujours la
+   dernière version quand on est en ligne), le cache seulement en secours hors
+   ligne. Le nom du cache change à chaque version pour purger l'ancien. */
+const VERSION = "2026-11-18-3";
+const CACHE = "aya-shell-" + VERSION;
 const SHELL = [
   "/",
   "/static/style.css",
@@ -11,14 +14,17 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)))
-    ).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
 });
 
@@ -29,18 +35,16 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
 
+  // Réseau d'abord : jamais de vieille version servie quand on est connecté.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request)
-        .then((response) => {
-          if (response.ok && response.type === "basic") {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached || caches.match("/"));
-      return cached || network;
-    })
+    fetch(request, { cache: "no-store" })
+      .then((response) => {
+        if (response.ok && response.type === "basic") {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
   );
 });

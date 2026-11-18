@@ -214,8 +214,18 @@ def client_config() -> dict:
 # ---------------------------------------------------------------------------
 # Interface (PWA)
 # ---------------------------------------------------------------------------
+class NoCacheStatic(StaticFiles):
+    """Fichiers statiques revalidés à chaque visite : un correctif atteint
+    immédiatement les téléphones, sans vider le cache à la main."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 if (WEB_DIR / "static").is_dir():
-    app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
+    app.mount("/static", NoCacheStatic(directory=WEB_DIR / "static"), name="static")
 
 
 @app.get("/manifest.webmanifest", include_in_schema=False)
@@ -234,7 +244,7 @@ def service_worker():
 
 @app.get("/", include_in_schema=False)
 def index():
-    return FileResponse(WEB_DIR / "index.html")
+    return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.exception_handler(404)
