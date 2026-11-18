@@ -20,6 +20,19 @@ def test_placeholder_translation(monkeypatch):
     assert "sslmode=require" not in db._dsn() or db._dsn().count("sslmode=") == 1
 
 
+def test_internal_railway_host_skips_ssl(monkeypatch):
+    """Le réseau interne Railway refuse le SSL : on ne doit pas le forcer."""
+    monkeypatch.setattr(db, "DATABASE_URL", "postgresql://u:p@postgres.railway.internal:5432/railway")
+    assert "sslmode" not in db._dsn()
+    monkeypatch.setattr(db, "DATABASE_URL", "postgresql://u:p@localhost:5432/db")
+    assert "sslmode" not in db._dsn()
+
+
+def test_external_host_forces_ssl(monkeypatch):
+    monkeypatch.setattr(db, "DATABASE_URL", "postgresql://u:p@db.abc.supabase.co:5432/postgres")
+    assert db._dsn().endswith("sslmode=require")
+
+
 def test_dsn_keeps_existing_ssl(monkeypatch):
     monkeypatch.setattr(db, "DATABASE_URL", "postgresql://u:p@h/db?sslmode=disable")
     assert db._dsn().count("sslmode=") == 1

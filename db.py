@@ -37,12 +37,34 @@ def describe() -> dict[str, Any]:
     return {"backend": "sqlite", "path": SQLITE_DB_PATH}
 
 
+def _host() -> str:
+    """Hôte de la base, sans identifiants (pour adapter le réglage SSL)."""
+    tail = DATABASE_URL.split("@")[-1]
+    return tail.split("/")[0].split(":")[0].lower()
+
+
+def _is_private_host() -> bool:
+    """Réseau interne Railway (ou local) : le SSL n'y est pas disponible."""
+    host = _host()
+    return (
+        host.endswith(".railway.internal")
+        or host in {"localhost", "127.0.0.1", "postgres", "db"}
+        or host.startswith("10.")
+        or host.startswith("192.168.")
+    )
+
+
 def _dsn() -> str:
-    """Railway fournit parfois ``postgres://`` : on normalise et on force SSL."""
+    """Railway fournit parfois ``postgres://`` : on normalise le schéma.
+
+    Le SSL est forcé pour une base distante (Supabase, Neon, Railway public),
+    mais PAS pour le réseau interne Railway : celui-ci refuse les connexions
+    SSL, et ``sslmode=require`` y provoquerait « server does not support SSL ».
+    """
     dsn = DATABASE_URL
     if dsn.startswith("postgres://"):
         dsn = "postgresql://" + dsn[len("postgres://"):]
-    if "sslmode=" not in dsn:
+    if "sslmode=" not in dsn and not _is_private_host():
         dsn += ("&" if "?" in dsn else "?") + "sslmode=require"
     return dsn
 
@@ -68,7 +90,18 @@ def _pg_connect(attempts: int = 5):
     last_error: Exception | None = None
     for attempt in range(attempts):
         try:
-            connection = psycopg2.connect(_dsn(), connect_timeout=10)
+            try:
+                connection = psycopg2.connect(_dsn(), connect_timeout=10)
+            except Exception as ssl_error:
+                # Base interne qui refuse le SSL malgré tout : on réessaie sans.
+                if "SSL" in str(ssl_error) and "sslmode=" in _dsn():
+                    logger.warning("SSL refusé par la base, nouvelle tentative sans SSL")
+                    connection = psycopg2.connect(
+                        _dsn().replace("sslmode=require", "sslmode=disable"),
+                        connect_timeout=10,
+                    )
+                else:
+                    raise
             connection.autocommit = True
             return connection
         except Exception as exc:  # pragma: no cover - dépend du réseau
