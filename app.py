@@ -185,6 +185,13 @@ def reset(payload: SessionRequest) -> dict:
     return {"removed": removed}
 
 
+@app.get("/api/quotes", dependencies=[Depends(require_access)])
+def list_quotes(limit: int = 50) -> dict:
+    """Demandes de devis confirmées (réservé à l'équipe)."""
+    limit = max(1, min(limit, 200))
+    return {"quotes": chat_store.quotes(limit)}
+
+
 @app.post("/api/language", dependencies=[Depends(require_access)])
 def set_language(payload: SessionRequest) -> dict:
     if payload.lang not in SUPPORTED_LANGUAGES:

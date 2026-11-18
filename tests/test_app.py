@@ -110,3 +110,28 @@ def test_knowledge_search_finds_the_right_section():
     assert prices and "tarifs" in prices[0]["source"].lower()
 
     assert rag_engine.search("combien coûte un bot WhatsApp", "ar") or True
+
+
+def test_devis_flow_is_reachable_and_recorded():
+    """Le parcours de devis doit démarrer en web et enregistrer la demande."""
+    session = "devis-session"
+    step1 = client.post("/api/chat", json={"message": "je veux un devis", "session_id": session}).json()
+    assert "Bot WhatsApp" in step1["reply"] and "1" in step1["reply"]
+
+    step2 = client.post("/api/chat", json={"message": "1", "session_id": session}).json()
+    assert "budget" in step2["reply"].lower()
+
+    step3 = client.post("/api/chat", json={"message": "150 euros", "session_id": session}).json()
+    assert "Récapitulatif" in step3["reply"]
+
+    step4 = client.post("/api/chat", json={"message": "oui", "session_id": session}).json()
+    assert "enregistrée" in step4["reply"]
+
+    quotes = client.get("/api/quotes").json()["quotes"]
+    assert any(q["service"] == "Bot WhatsApp" and q["budget"] == "150 euros" for q in quotes)
+
+
+def test_quote_intent_does_not_hijack_price_question():
+    session = "prix-session"
+    reply = client.post("/api/chat", json={"message": "combien coûte un bot whatsapp", "session_id": session}).json()["reply"]
+    assert "200" in reply and "quel service" not in reply.lower()

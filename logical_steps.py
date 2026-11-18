@@ -42,9 +42,9 @@ def start_devis_flow(chat_id: int, lang: str) -> str:
     set_flow_state(chat_id, "devis_services", {})
 
     messages = {
-        "fr": "Parfait ! Pour vous préparer un devis, quels services vous intéressent ?\n\n1️⃣ Design intérieur\n2️⃣ Architecture\n3️⃣ Rénovation\n4️⃣ Consultation\n\nRépondez avec le numéro.",
-        "ar": "ممتاز! لتحضير عرض سعر، ما هي الخدمات التي تهمك؟\n\n1️⃣ تصميم داخلي\n2️⃣ هندسة معمارية\n3️⃣ ترميم\n4️⃣ استشارة\n\nأجب بالرقم.",
-        "en": "Great! To prepare a quote, which services interest you?\n\n1️⃣ Interior Design\n2️⃣ Architecture\n3️⃣ Renovation\n4️⃣ Consultation\n\nReply with the number.",
+        "fr": "Parfait ! Pour vous préparer un devis, quel service vous intéresse ?\n\n1️⃣ Bot WhatsApp\n2️⃣ Bot Telegram ou chatbot IA\n3️⃣ Design graphique\n4️⃣ Accompagnement digital\n\nRépondez avec le numéro.",
+        "ar": "ممتاز! لتحضير عرض سعر، ما هي الخدمة التي تهمك؟\n\n1️⃣ بوت واتساب\n2️⃣ بوت تلغرام أو روبوت محادثة\n3️⃣ تصميم غرافيك\n4️⃣ مواكبة رقمية\n\nأجب بالرقم.",
+        "en": "Great! To prepare a quote, which service interests you?\n\n1️⃣ WhatsApp bot\n2️⃣ Telegram bot or AI chatbot\n3️⃣ Graphic design\n4️⃣ Digital support\n\nReply with the number.",
     }
     set_pending(chat_id, "choice", "devis_services")
     return messages.get(lang, messages["fr"])
@@ -69,7 +69,12 @@ def process_devis_step(chat_id: int, user_text: str, lang: str) -> str | None:
             }
             return messages.get(lang, messages["fr"])
 
-        services = {1: "Design intérieur", 2: "Architecture", 3: "Rénovation", 4: "Consultation"}
+        services = {
+            1: "Bot WhatsApp",
+            2: "Bot Telegram / chatbot IA",
+            3: "Design graphique",
+            4: "Accompagnement digital",
+        }
         flow["data"]["service"] = services.get(num, "Autre")
         set_flow_state(chat_id, "devis_budget", flow["data"])
 
@@ -100,6 +105,19 @@ def process_devis_step(chat_id: int, user_text: str, lang: str) -> str | None:
             return None
 
         if answer == "oui":
+            # La demande est enregistrée : elle ne se perd plus à la fermeture
+            # de la page et reste consultable côté Komara Agency.
+            try:
+                import chat_store
+
+                chat_store.add_quote(
+                    str(chat_id),
+                    flow["data"].get("service", ""),
+                    flow["data"].get("budget", ""),
+                    lang,
+                )
+            except Exception:
+                pass
             clear_flow_state(chat_id)
             clear_pending(chat_id)
             messages = {

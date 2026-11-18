@@ -6,7 +6,7 @@ import re
 from utils import clean_text, is_secret_probe, GENERIC_MESSAGES
 from language_detector import detect_language, get_language
 from pending_question import get_pending, is_valid_answer, clear_pending
-from logical_steps import process_devis_step, get_flow_state
+from logical_steps import process_devis_step, get_flow_state, start_devis_flow
 from farewell_guard import is_farewell, get_farewell_response
 from sector_reply import get_sector_response
 import rag_engine
@@ -61,15 +61,32 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
             bot_send_func(chat_id, flow_response)
             return True
 
-    # 7. Recherche RAG avec détection de secteur
+    # 7. Demande de devis : le parcours guidé est plus utile qu'une fiche tarif
+    if is_quote_intent(text):
+        bot_send_func(chat_id, start_devis_flow(chat_id, lang))
+        return True
+
+    # 8. Recherche RAG avec détection de secteur
     rag_response = get_sector_response(text, lang)
     if rag_response:
         bot_send_func(chat_id, rag_response)
         return True
 
-    # 8. Fallback : message générique
+    # 9. Fallback : message générique
     bot_send_func(chat_id, GENERIC_MESSAGES[lang]["no_understand"])
     return True
+
+
+_QUOTE_PATTERNS = (
+    "devis", "quote", "quotation", "estimation", "offre de prix",
+    "عرض سعر", "تسعير", "سعر خاص",
+)
+
+
+def is_quote_intent(text: str) -> bool:
+    """Détecte une demande de devis explicite (et non une simple question de prix)."""
+    lowered = text.casefold()
+    return any(pattern in lowered for pattern in _QUOTE_PATTERNS)
 
 
 def handle_punctuation_only(text: str) -> bool:

@@ -10,7 +10,8 @@ et sur téléphone, comme une application classique (PWA).
   anglais et arabe, à partir de `knowledge_base/`.
 - Reconnaît les salutations et les adieux, et bloque les tentatives
   d'extraction de prompt.
-- Guide le client dans un parcours de devis (service, budget, confirmation).
+- Guide le client dans un parcours de devis (service, budget, confirmation),
+  puis enregistre la demande : elle est consultable sur `/api/quotes`.
 - Garde l'historique de chaque conversation dans une base locale SQLite.
 
 ## Installation sur ordinateur
@@ -160,7 +161,7 @@ python -m pytest tests -q
 | `rag_engine.py` | Recherche dans la base de connaissances |
 | `logical_steps.py` | Parcours de devis |
 | `db.py` | Connexion PostgreSQL / SQLite |
-| `chat_store.py` | Historique des conversations |
+| `chat_store.py` | Historique des conversations et demandes de devis |
 | `memory_sheets.py` | Journal Google Sheets (facultatif) |
 
 ## Licence
