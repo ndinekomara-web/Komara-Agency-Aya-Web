@@ -17,6 +17,11 @@ APP_PORT = int(os.getenv("PORT", os.getenv("APP_PORT", "8000")))
 # passe avant d'ouvrir la conversation (utile si elle est exposée en ligne).
 APP_ACCESS_TOKEN = os.getenv("APP_ACCESS_TOKEN", "").strip()
 
+# Adresse(s) IP autorisées à administrer l'application (ajout de connaissances).
+# Plusieurs IP possibles, séparées par des virgules. Vide = administration
+# désactivée. Exemple : ADMIN_ID=41.140.12.34
+ADMIN_ID = os.getenv("ADMIN_ID", "").strip()
+
 # === Google (facultatif) ===
 GOOGLE_SHEETS_ID = os.getenv("GOOGLE_SHEETS_ID", "")
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")

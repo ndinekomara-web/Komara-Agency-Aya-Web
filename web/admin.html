@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Administration — Aya</title>
+  <meta name="theme-color" content="#0b0f14" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+  <link rel="icon" href="/static/icons/icon-192.png" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body>
+  <div class="app admin-app">
+    <header class="topbar">
+      <div class="brand">
+        <img src="/static/icons/avatar.png" alt="" class="brand-logo" />
+        <div class="brand-text">
+          <strong>Administration</strong>
+          <span id="who">Aya — Komara Agency</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <a class="ghost" href="/">Conversation</a>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <section class="card">
+        <h2>Ajouter une connaissance</h2>
+        <p class="muted">Aya utilisera cette information dans ses réponses, immédiatement.</p>
+        <form id="form">
+          <label>Langue
+            <select id="lang">
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="ar">العربية</option>
+            </select>
+          </label>
+          <label>Sujet
+            <input id="title" type="text" maxlength="120" placeholder="Ex : Livraison à Conakry" required />
+          </label>
+          <label>Information
+            <textarea id="content" rows="5" maxlength="4000" placeholder="Ex : Nous livrons à Conakry en 48h, paiement à la livraison." required></textarea>
+          </label>
+          <button id="save" type="submit">Enregistrer</button>
+          <p class="status" id="status" hidden></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Connaissances ajoutées</h2>
+        <p class="muted" id="count">Chargement…</p>
+        <ul class="entries" id="entries"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Demandes de devis</h2>
+        <ul class="entries" id="quotes"><li class="muted">Chargement…</li></ul>
+      </section>
+
+      <section class="card">
+        <h2>Accès</h2>
+        <p class="muted">IP détectée : <strong id="ip">…</strong></p>
+        <p class="muted">IP autorisées (ADMIN_ID) : <span id="allowed">…</span></p>
+      </section>
+    </main>
+  </div>
+  <script src="/static/admin.js" defer></script>
+</body>
+</html>

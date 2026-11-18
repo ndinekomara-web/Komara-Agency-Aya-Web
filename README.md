@@ -114,6 +114,7 @@ Toutes les options passent par des variables d'environnement (voir `.env.example
 | `PORT` | Port d'écoute | `8000` |
 | `DEFAULT_LANGUAGE` | Langue de départ | `fr` |
 | `APP_ACCESS_TOKEN` | Mot de passe protégeant la conversation | vide (public) |
+| `ADMIN_ID` | IP(s) autorisées pour `/admin`, séparées par des virgules | vide (désactivé) |
 | `RAG_BACKEND` | `auto`, `keyword` ou `embed` | `auto` |
 | `DATABASE_URL` | Connexion PostgreSQL (sinon SQLite) | vide |
 | `MEMORY_DIR` | Dossier de la base SQLite | `./data` |
@@ -129,6 +130,23 @@ Toutes les options passent par des variables d'environnement (voir `.env.example
 En mode `auto`, Aya utilise les embeddings s'ils sont installés et bascule
 sinon sur les mots-clés : l'application ne tombe jamais en panne à cause
 d'une dépendance manquante.
+
+## Administration par IP (`/admin`)
+
+Une page d'administration permet d'ajouter des connaissances sans toucher au
+code. Elle est réservée aux adresses IP listées dans `ADMIN_ID`.
+
+1. Définissez `ADMIN_ID` dans Railway (ex. `ADMIN_ID=41.140.12.34`).
+2. Ouvrez `/admin` depuis cette adresse.
+3. Saisissez la langue, le sujet et l'information, puis *Enregistrer*.
+   Aya l'utilise immédiatement.
+
+Les informations sont stockées en base (`knowledge_entries`), donc elles
+survivent aux redéploiements. Si l'IP n'est pas autorisée, la page affiche
+l'IP détectée : il suffit de la recopier dans `ADMIN_ID`.
+
+> L'IP d'un téléphone mobile change (4G, Wi-Fi, opérateur). En cas de refus,
+> rouvrez `/admin` pour lire la nouvelle IP et mettez-la à jour.
 
 ## Enrichir les connaissances
 

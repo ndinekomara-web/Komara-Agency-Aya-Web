@@ -204,8 +204,47 @@ def _load_knowledge_base() -> None:
                 entries.append(entry)
         cache[lang] = entries
 
+    _merge_admin_knowledge(cache)
+
     with _kb_lock:
         _kb_cache = cache
+
+
+def _merge_admin_knowledge(cache: dict[str, list[dict]]) -> None:
+    """Ajoute les connaissances saisies par l'administrateur (stockées en base).
+
+    Elles vivent en base et non dans un fichier : elles survivent donc aux
+    redéploiements, contrairement au disque de l'application.
+    """
+    try:
+        import chat_store
+
+        rows = chat_store.knowledge_entries()
+    except Exception:
+        return
+    if not rows:
+        return
+
+    use_embeddings = active_backend() == "embed"
+    model = _get_model() if use_embeddings else None
+    for row in rows:
+        lang = row.get("lang") or "fr"
+        text = f"{row.get('title', '')}\n{row.get('content', '')}".strip()
+        if len(text) < 5:
+            continue
+        entry = {
+            "text": text,
+            "source": f"admin#{row.get('title', 'note')}",
+            "lang": lang,
+            "tokens": _tokens(text),
+            "title_tokens": _tokens(row.get("title", "")),
+            # Une information donnée explicitement par Komara Agency prime
+            # sur une fiche générique de la base de connaissances.
+            "boost": 1.25,
+        }
+        if use_embeddings and model is not None:
+            entry["embedding"] = model.encode(text, show_progress_bar=False).tolist()
+        cache.setdefault(lang, []).append(entry)
 
 
 def reload_knowledge_base() -> None:
@@ -310,6 +349,7 @@ def search(
         score = _keyword_score(
             query_tokens, entry.get("tokens", []), entry.get("title_tokens", [])
         )
+        score = min(1.0, score * entry.get("boost", 1.0))
         if score >= threshold:
             scored.append((entry, score))
     scored.sort(key=lambda item: item[1], reverse=True)

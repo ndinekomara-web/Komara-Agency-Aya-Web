@@ -26,6 +26,7 @@ import chat_store
 import db
 import rag_engine
 from config import (
+    ADMIN_ID,
     APP_ACCESS_TOKEN,
     APP_NAME,
     APP_PORT,
@@ -74,6 +75,39 @@ def _authorized(request: Request) -> bool:
         return True
     supplied = request.headers.get("x-access-token") or request.cookies.get("aya_access") or ""
     return secrets.compare_digest(supplied, APP_ACCESS_TOKEN)
+
+
+def _client_ip(request: Request) -> str:
+    """IP réelle du visiteur, même derrière le proxy de Railway."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return (request.client.host if request.client else "") or ""
+
+
+def admin_ips() -> list[str]:
+    """Liste des IP autorisées (ADMIN_ID, séparées par des virgules)."""
+    return [ip.strip() for ip in ADMIN_ID.replace(";", ",").split(",") if ip.strip()]
+
+
+def is_admin(request: Request) -> bool:
+    allowed = admin_ips()
+    return bool(allowed) and _client_ip(request) in allowed
+
+
+def require_admin(request: Request) -> None:
+    if not admin_ips():
+        raise HTTPException(
+            status_code=403,
+            detail="Administration désactivée : définissez ADMIN_ID avec votre IP.",
+        )
+    if not is_admin(request):
+        raise HTTPException(
+            status_code=403,
+            detail=f"IP non autorisée ({_client_ip(request)}). Ajoutez-la à ADMIN_ID.",
+        )
+    if not _authorized(request):
+        raise HTTPException(status_code=401, detail="Connectez-vous d'abord à Aya.")
 
 
 def require_access(request: Request) -> None:
@@ -186,6 +220,44 @@ def reset(payload: SessionRequest) -> dict:
     return {"removed": removed}
 
 
+class KnowledgeRequest(BaseModel):
+    lang: str = Field(default="fr", max_length=5)
+    title: str = Field(min_length=2, max_length=120)
+    content: str = Field(min_length=5, max_length=4000)
+
+
+@app.get("/api/admin/status")
+def admin_status(request: Request) -> dict:
+    """Permet à la page d'administration de savoir où elle en est."""
+    return {
+        "ip": _client_ip(request),
+        "allowed_ips": admin_ips(),
+        "is_admin": is_admin(request),
+        "auth_required": bool(APP_ACCESS_TOKEN),
+    }
+
+
+@app.get("/api/admin/knowledge", dependencies=[Depends(require_admin)])
+def admin_list_knowledge(lang: str | None = None) -> dict:
+    return {"entries": chat_store.knowledge_entries(lang)}
+
+
+@app.post("/api/admin/knowledge", dependencies=[Depends(require_admin)])
+def admin_add_knowledge(payload: KnowledgeRequest) -> dict:
+    if payload.lang not in SUPPORTED_LANGUAGES:
+        raise HTTPException(status_code=400, detail="Langue non supportée.")
+    entry_id = chat_store.add_knowledge(payload.lang, payload.title.strip(), payload.content.strip())
+    rag_engine.reload_knowledge_base()
+    return {"id": entry_id, "sections": rag_engine.stats()["sections"]}
+
+
+@app.delete("/api/admin/knowledge/{entry_id}", dependencies=[Depends(require_admin)])
+def admin_delete_knowledge(entry_id: int) -> dict:
+    removed = chat_store.delete_knowledge(entry_id)
+    rag_engine.reload_knowledge_base()
+    return {"removed": removed}
+
+
 @app.get("/api/quotes", dependencies=[Depends(require_access)])
 def list_quotes(limit: int = 50) -> dict:
     """Demandes de devis confirmées (réservé à l'équipe)."""
@@ -240,6 +312,31 @@ def service_worker():
         media_type="application/javascript",
         headers={"Cache-Control": "no-cache"},
     )
+
+
+@app.get("/admin", include_in_schema=False)
+def admin_page(request: Request):
+    """Page d'administration, réservée aux IP déclarées dans ADMIN_ID."""
+    if not admin_ips():
+        return JSONResponse(
+            {
+                "detail": "Administration désactivée.",
+                "comment": "Ajoutez la variable ADMIN_ID avec votre adresse IP dans Railway.",
+                "votre_ip": _client_ip(request),
+            },
+            status_code=403,
+        )
+    if not is_admin(request):
+        return JSONResponse(
+            {
+                "detail": "Cette adresse IP n'est pas autorisée à administrer Aya.",
+                "votre_ip": _client_ip(request),
+                "ip_autorisee": admin_ips(),
+                "comment": "Mettez à jour ADMIN_ID avec l'IP affichée ci-dessus.",
+            },
+            status_code=403,
+        )
+    return FileResponse(WEB_DIR / "admin.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/", include_in_schema=False)

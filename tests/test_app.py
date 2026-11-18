@@ -135,3 +135,50 @@ def test_quote_intent_does_not_hijack_price_question():
     session = "prix-session"
     reply = client.post("/api/chat", json={"message": "combien coûte un bot whatsapp", "session_id": session}).json()["reply"]
     assert "200" in reply and "quel service" not in reply.lower()
+
+
+def test_admin_disabled_by_default():
+    aya.ADMIN_ID = ""
+    try:
+        assert client.get("/admin").status_code == 403
+        assert client.get("/api/admin/status").json()["allowed_ips"] == []
+    finally:
+        aya.ADMIN_ID = ""
+
+
+def test_admin_by_ip_can_add_knowledge():
+    aya.ADMIN_ID = "testclient"  # hôte vu par le client de test
+    try:
+        page = client.get("/admin")
+        assert page.status_code == 200 and "Administration" in page.text
+
+        added = client.post(
+            "/api/admin/knowledge",
+            json={"lang": "fr", "title": "Livraison Conakry", "content": "Nous livrons à Conakry en 48h."},
+        )
+        assert added.status_code == 200
+
+        reply = client.post(
+            "/api/chat", json={"message": "livrez-vous à conakry", "session_id": "kb-1"}
+        ).json()["reply"]
+        assert "Conakry" in reply and "48h" in reply
+
+        entries = client.get("/api/admin/knowledge").json()["entries"]
+        assert any(e["title"] == "Livraison Conakry" for e in entries)
+
+        entry_id = next(e["id"] for e in entries if e["title"] == "Livraison Conakry")
+        assert client.delete(f"/api/admin/knowledge/{entry_id}").json()["removed"] == 1
+    finally:
+        aya.ADMIN_ID = ""
+
+
+def test_admin_rejects_foreign_ip():
+    aya.ADMIN_ID = "41.140.12.34"
+    try:
+        denied = client.get("/api/admin/status", headers={"X-Forwarded-For": "8.8.8.8"})
+        assert denied.json()["is_admin"] is False
+        assert client.get("/admin", headers={"X-Forwarded-For": "8.8.8.8"}).status_code == 403
+        allowed = client.get("/api/admin/status", headers={"X-Forwarded-For": "41.140.12.34"})
+        assert allowed.json()["is_admin"] is True
+    finally:
+        aya.ADMIN_ID = ""

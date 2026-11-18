@@ -46,6 +46,15 @@ def _schema() -> list[str]:
                 created_at DOUBLE PRECISION NOT NULL
             )
             """,
+            """
+            CREATE TABLE IF NOT EXISTS knowledge_entries (
+                id BIGSERIAL PRIMARY KEY,
+                lang TEXT NOT NULL,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at DOUBLE PRECISION NOT NULL
+            )
+            """,
         ]
     return [
         """
@@ -74,6 +83,15 @@ def _schema() -> list[str]:
             service TEXT,
             budget TEXT,
             lang TEXT,
+            created_at REAL NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS knowledge_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lang TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
             created_at REAL NOT NULL
         )
         """,
@@ -141,11 +159,41 @@ def quotes(limit: int = 50) -> list[dict[str, Any]]:
     )
 
 
+def add_knowledge(lang: str, title: str, content: str) -> int:
+    """Ajoute une connaissance saisie par l'administrateur."""
+    rows = db.run(
+        "INSERT INTO knowledge_entries (lang, title, content, created_at) VALUES (?, ?, ?, ?) "
+        "RETURNING id",
+        (lang, title, content, time.time()),
+    )
+    return int(rows[0]["id"]) if rows else 0
+
+
+def knowledge_entries(lang: str | None = None) -> list[dict[str, Any]]:
+    if lang:
+        return db.run(
+            "SELECT id, lang, title, content, created_at FROM knowledge_entries "
+            "WHERE lang = ? ORDER BY id DESC",
+            (lang,),
+        )
+    return db.run(
+        "SELECT id, lang, title, content, created_at FROM knowledge_entries ORDER BY id DESC"
+    )
+
+
+def delete_knowledge(entry_id: int) -> int:
+    rows = db.run("SELECT COUNT(*) AS total FROM knowledge_entries WHERE id = ?", (entry_id,))
+    db.run("DELETE FROM knowledge_entries WHERE id = ?", (entry_id,))
+    return int(rows[0]["total"]) if rows else 0
+
+
 def stats() -> dict[str, Any]:
     sessions = db.run("SELECT COUNT(*) AS total FROM sessions")
     messages = db.run("SELECT COUNT(*) AS total FROM messages")
+    knowledge = db.run("SELECT COUNT(*) AS total FROM knowledge_entries")
     return {
         "sessions": int(sessions[0]["total"]) if sessions else 0,
         "messages": int(messages[0]["total"]) if messages else 0,
+        "knowledge": int(knowledge[0]["total"]) if knowledge else 0,
         "backend": db.backend(),
     }
