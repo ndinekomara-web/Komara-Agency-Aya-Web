@@ -54,11 +54,31 @@ docker compose up -d --build
 
 Aya écoute sur le port 8000. Les conversations sont conservées dans `./data`.
 
-### Railway / Render
+### Railway
 
-- Start command : `uvicorn app:app --host 0.0.0.0 --port $PORT`
-  (déjà dans le `Procfile`).
-- Ajoutez un volume monté sur `/app/data` pour garder l'historique.
+Le dépôt est prêt : `railway.json` fixe la commande de démarrage et la sonde
+de santé (`/api/health`).
+
+1. Sur [railway.app](https://railway.app), **New Project → Deploy from GitHub repo**,
+   puis choisissez `Komara-Agency-Aya-Web`.
+2. **Settings → Networking → Generate Domain** : vous obtenez une adresse HTTPS.
+   C'est celle que le téléphone ouvrira.
+3. **Variables** (Settings → Variables) :
+
+   | Variable | Valeur conseillée |
+   | --- | --- |
+   | `APP_ACCESS_TOKEN` | un mot de passe de votre choix (protège la conversation) |
+   | `RAG_BACKEND` | `keyword` (léger) ou `embed` (plus fin, plus lourd) |
+   | `DEFAULT_LANGUAGE` | `fr` |
+
+   `PORT` est fourni automatiquement par Railway : ne le définissez pas.
+4. **Volume** (Settings → Volumes) : ajoutez un volume monté sur `/app/data`.
+   Sans lui, l'historique des conversations est effacé à chaque déploiement.
+5. Déployez, puis ouvrez l'adresse HTTPS sur le téléphone et installez
+   l'application.
+
+Le port est lu depuis `$PORT`, le stockage bascule automatiquement sur
+`/app/data` en production et reste dans `./data` en local.
 
 ## Configuration
 

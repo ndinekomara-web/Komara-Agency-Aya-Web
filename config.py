@@ -44,5 +44,20 @@ CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "86400"))
 SHEETS_LOG_ASYNC = True
 
 # === Chemins ===
-MEMORY_DIR = os.getenv("MEMORY_DIR", os.path.join(os.path.dirname(__file__), "data"))
+def _default_memory_dir() -> str:
+    """Choisit le dossier de stockage selon l'environnement d'exécution.
+
+    Sur Railway (et la plupart des plateformes), le disque de l'application
+    est effacé à chaque déploiement : on privilégie donc le volume persistant
+    monté sur /app/data. En local, on reste dans ./data.
+    """
+    explicit = os.getenv("MEMORY_DIR", "").strip()
+    if explicit:
+        return explicit
+    if os.getenv("RAILWAY_ENVIRONMENT") or os.path.isdir("/app/data"):
+        return "/app/data"
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+
+MEMORY_DIR = _default_memory_dir()
 SQLITE_DB_PATH = os.path.join(MEMORY_DIR, "memory.db")
