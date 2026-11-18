@@ -33,8 +33,13 @@ def describe() -> dict[str, Any]:
     """Informations affichées par /api/health."""
     if backend() == "postgres":
         host = DATABASE_URL.split("@")[-1].split("/")[0] if "@" in DATABASE_URL else "distante"
-        return {"backend": "postgres", "host": host}
-    return {"backend": "sqlite", "path": SQLITE_DB_PATH}
+        return {"backend": "postgres", "host": host, "configured": True}
+    return {
+        "backend": "sqlite",
+        "path": SQLITE_DB_PATH,
+        "configured": False,
+        "hint": "DATABASE_URL absent : ajoutez une référence au service PostgreSQL",
+    }
 
 
 def _host() -> str:

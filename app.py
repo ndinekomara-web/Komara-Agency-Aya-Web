@@ -124,6 +124,7 @@ def health() -> dict:
         "app": APP_NAME,
         "auth": bool(APP_ACCESS_TOKEN),
         "rag": rag_engine.stats(),
+        "version": os.getenv("RAILWAY_GIT_COMMIT_SHA", "dev")[:7],
         "database": db.describe(),
         "store": chat_store.stats(),
     }
