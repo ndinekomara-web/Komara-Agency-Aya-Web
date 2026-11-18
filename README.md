@@ -72,13 +72,32 @@ de santé (`/api/health`).
    | `DEFAULT_LANGUAGE` | `fr` |
 
    `PORT` est fourni automatiquement par Railway : ne le définissez pas.
-4. **Volume** (Settings → Volumes) : ajoutez un volume monté sur `/app/data`.
-   Sans lui, l'historique des conversations est effacé à chaque déploiement.
+4. **PostgreSQL** (recommandé) : *New → Database → Add PostgreSQL* dans le
+   même projet. Railway crée la variable `DATABASE_URL`, et Aya s'y connecte
+   toute seule : l'historique survit aux redéploiements.
 5. Déployez, puis ouvrez l'adresse HTTPS sur le téléphone et installez
    l'application.
 
-Le port est lu depuis `$PORT`, le stockage bascule automatiquement sur
-`/app/data` en production et reste dans `./data` en local.
+Le port est lu depuis `$PORT`. Sans PostgreSQL, Aya écrit dans un fichier
+SQLite (`/app/data` en production, `./data` en local) : cela fonctionne, mais
+le fichier est perdu à chaque déploiement.
+
+## Base de données
+
+| Situation | Base utilisée |
+| --- | --- |
+| `DATABASE_URL` défini (Railway, Render, Supabase…) | PostgreSQL |
+| `DATABASE_URL` vide (local, VPS) | SQLite dans `MEMORY_DIR` |
+
+Le schéma est créé automatiquement au démarrage (`sessions`, `messages`).
+La connexion PostgreSQL réessaie plusieurs fois si la base démarre après
+l'application, et force `sslmode=require` si le paramètre est absent.
+
+Pour vérifier la base active :
+
+```bash
+curl https://votre-domaine/api/health
+```
 
 ## Configuration
 
@@ -90,6 +109,7 @@ Toutes les options passent par des variables d'environnement (voir `.env.example
 | `DEFAULT_LANGUAGE` | Langue de départ | `fr` |
 | `APP_ACCESS_TOKEN` | Mot de passe protégeant la conversation | vide (public) |
 | `RAG_BACKEND` | `auto`, `keyword` ou `embed` | `auto` |
+| `DATABASE_URL` | Connexion PostgreSQL (sinon SQLite) | vide |
 | `MEMORY_DIR` | Dossier de la base SQLite | `./data` |
 | `GOOGLE_SHEETS_ID` | Journal Sheets (facultatif) | vide |
 
@@ -134,7 +154,8 @@ python -m pytest tests -q
 | `message_router.py` | Enchaînement des traitements d'un message |
 | `rag_engine.py` | Recherche dans la base de connaissances |
 | `logical_steps.py` | Parcours de devis |
-| `chat_store.py` | Historique SQLite des conversations |
+| `db.py` | Connexion PostgreSQL / SQLite |
+| `chat_store.py` | Historique des conversations |
 | `memory_sheets.py` | Journal Google Sheets (facultatif) |
 
 ## Licence

@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 import chat_store
+import db
 import rag_engine
 from config import (
     APP_ACCESS_TOKEN,
@@ -83,27 +84,33 @@ def require_access(request: Request) -> None:
 # ---------------------------------------------------------------------------
 # Logique de conversation
 # ---------------------------------------------------------------------------
-def _answer(session_id: str, text: str) -> dict:
+def _answer(session_id: str, text: str, is_new_session: bool = False) -> dict:
     """Traite un message et renvoie la réponse (exécuté dans un thread)."""
     lang = detect_language(text, session_id)
-    replies: list[str] = []
+    router_replies: list[str] = []
 
     def send(_session: str, message: str) -> None:
-        if message and message not in replies:
-            replies.append(message)
+        if message and message not in router_replies:
+            router_replies.append(message)
 
-    # Petite touche d'accueil : première visite de la session
-    previous = chat_store.history(session_id, limit=1)
-    if not previous:
-        greeting = handle_greeting(text, lang)
-        if greeting:
-            replies.append(greeting)
+    # Accueil : uniquement au premier message de la session, et si le client
+    # écrit une salutation (le routeur, lui, ne gère pas les salutations).
+    greeting = handle_greeting(text, lang) if is_new_session else None
 
     route_message(session_id, text, send)
 
-    reply = "\n\n".join(replies).strip()
+    generic = GENERIC_MESSAGES.get(lang, GENERIC_MESSAGES["fr"])["no_understand"]
+    useful = [reply for reply in router_replies if reply != generic]
+
+    if greeting and not useful:
+        # Une simple salutation ne doit pas déclencher « je n'ai pas compris ».
+        reply = greeting
+    else:
+        parts = ([greeting] if greeting else []) + (useful or router_replies)
+        reply = "\n\n".join(parts).strip()
+
     if not reply:
-        reply = GENERIC_MESSAGES.get(lang, GENERIC_MESSAGES["fr"])["no_understand"]
+        reply = generic
     return {"reply": reply, "lang": lang}
 
 
@@ -117,6 +124,7 @@ def health() -> dict:
         "app": APP_NAME,
         "auth": bool(APP_ACCESS_TOKEN),
         "rag": rag_engine.stats(),
+        "database": db.describe(),
         "store": chat_store.stats(),
     }
 
@@ -147,11 +155,12 @@ async def chat(payload: ChatRequest) -> dict:
     if payload.lang in SUPPORTED_LANGUAGES:
         change_language(session_id, payload.lang)
 
+    is_new_session = not chat_store.history(session_id, limit=1)
     chat_store.touch_session(session_id, payload.lang)
     chat_store.add_message(session_id, "user", text, payload.lang)
 
     try:
-        result = await run_in_threadpool(_answer, session_id, text)
+        result = await run_in_threadpool(_answer, session_id, text, is_new_session)
     except Exception:  # pragma: no cover - garde-fou
         logger.exception("Erreur pendant le traitement du message")
         lang = get_language(session_id)

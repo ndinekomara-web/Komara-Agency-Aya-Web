@@ -66,6 +66,13 @@ def test_chat_replies_and_persists():
     assert history[1]["role"] == "assistant"
 
 
+def test_first_greeting_is_welcomed():
+    first = client.post("/api/chat", json={"message": "bonjour", "session_id": "greet-1"}).json()
+    assert "Bonjour" in first["reply"]
+    second = client.post("/api/chat", json={"message": "bonjour", "session_id": "greet-1"}).json()
+    assert "Bonjour" not in second["reply"]
+
+
 def test_empty_message_rejected():
     response = client.post("/api/chat", json={"message": "   ", "session_id": "s"})
     assert response.status_code in (400, 422)
