@@ -24,7 +24,9 @@ from starlette.concurrency import run_in_threadpool
 
 import chat_store
 import db
+import portfolio
 import rag_engine
+import seed_engine
 from config import (
     ADMIN_ID,
     APP_ACCESS_TOKEN,
@@ -118,34 +120,28 @@ def require_access(request: Request) -> None:
 # ---------------------------------------------------------------------------
 # Logique de conversation
 # ---------------------------------------------------------------------------
+def _wants_gallery(question: str) -> bool:
+    """La galerie s'affiche quand la fiche « portfolio » du seed répond."""
+    hit = seed_engine.find_answer(question)
+    if not hit:
+        return False
+    return "portfolio" in hit["question"].casefold() or hit["answer"].startswith("Voici quelques-unes de nos réalisations")
+
+
 def _answer(session_id: str, text: str, is_new_session: bool = False) -> dict:
     """Traite un message et renvoie la réponse (exécuté dans un thread)."""
     lang = detect_language(text, session_id)
-    router_replies: list[str] = []
+    replies: list[str] = []
 
     def send(_session: str, message: str) -> None:
-        if message and message not in router_replies:
-            router_replies.append(message)
-
-    # Accueil : uniquement au premier message de la session, et si le client
-    # écrit une salutation (le routeur, lui, ne gère pas les salutations).
-    greeting = handle_greeting(text, lang) if is_new_session else None
+        if message and message not in replies:
+            replies.append(message)
 
     route_message(session_id, text, send)
 
     generic = GENERIC_MESSAGES.get(lang, GENERIC_MESSAGES["fr"])["no_understand"]
-    useful = [reply for reply in router_replies if reply != generic]
-
-    if greeting and not useful:
-        # Une simple salutation ne doit pas déclencher « je n'ai pas compris ».
-        reply = greeting
-    else:
-        parts = ([greeting] if greeting else []) + (useful or router_replies)
-        reply = "\n\n".join(parts).strip()
-
-    if not reply:
-        reply = generic
-    return {"reply": reply, "lang": lang}
+    reply = "\n\n".join(r for r in replies if r != generic).strip() or generic
+    return {"reply": reply, "lang": lang, "gallery": _wants_gallery(text)}
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +201,12 @@ async def chat(payload: ChatRequest) -> dict:
         }
 
     chat_store.add_message(session_id, "assistant", result["reply"], result["lang"])
-    return {"reply": result["reply"], "lang": result["lang"], "session_id": session_id}
+    return {
+        "reply": result["reply"],
+        "lang": result["lang"],
+        "session_id": session_id,
+        "gallery": bool(result.get("gallery")),
+    }
 
 
 @app.get("/api/history", dependencies=[Depends(require_access)])
@@ -256,6 +257,11 @@ def admin_delete_knowledge(entry_id: int) -> dict:
     removed = chat_store.delete_knowledge(entry_id)
     rag_engine.reload_knowledge_base()
     return {"removed": removed}
+
+
+@app.get("/api/portfolio")
+def get_portfolio() -> dict:
+    return {"items": portfolio.list_items()}
 
 
 @app.get("/api/quotes", dependencies=[Depends(require_access)])

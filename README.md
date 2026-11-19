@@ -6,8 +6,11 @@ et sur téléphone, comme une application classique (PWA).
 
 ## Ce que fait Aya
 
-- Répond aux questions sur les services, les tarifs et les délais, en français,
-  anglais et arabe, à partir de `knowledge_base/`.
+- Répond avec les fiches de `aya_seed.py` (ton d'Aya, tes prix, tunnel de vente,
+  objections) : correspondance sur les questions, aucune IA ni API, la réponse
+  est exactement celle écrite dans le seed. `knowledge_base/` et les
+  informations ajoutées depuis `/admin` complètent ce que le seed ne couvre pas.
+- Affiche une galerie du portfolio (`web/static/portfolio/`).
 - Reconnaît les salutations et les adieux, et bloque les tentatives
   d'extraction de prompt.
 - Guide le client dans un parcours de devis (service, budget, confirmation),
@@ -147,6 +150,18 @@ l'IP détectée : il suffit de la recopier dans `ADMIN_ID`.
 
 > L'IP d'un téléphone mobile change (4G, Wi-Fi, opérateur). En cas de refus,
 > rouvrez `/admin` pour lire la nouvelle IP et mettez-la à jour.
+
+## Modifier les réponses d'Aya
+
+Tout se joue dans `aya_seed.py` : une fiche est `(["question 1", "question 2"], "réponse")`.
+
+- *Prix et contact* : variables d'environnement `PRICE_LOGO`, `PRICE_AFFICHE`,
+  `PRICE_SITE`, `PRICE_RETOUCHE`, `PRICE_PACK_PREMIUM`, `KOMARA_WHATSAPP`.
+  Pas besoin de toucher au code.
+- *Ajouter une réponse sans redéployer* : page `/admin` (stockée en base).
+- *Portfolio* : déposez une image dans `web/static/portfolio/`, légende dans `captions.json`.
+
+Ordre de réponse : seed, puis connaissances `/admin`, puis `knowledge_base/`.
 
 ## Enrichir les connaissances
 

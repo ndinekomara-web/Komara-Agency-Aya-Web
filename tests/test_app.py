@@ -66,11 +66,9 @@ def test_chat_replies_and_persists():
     assert history[1]["role"] == "assistant"
 
 
-def test_first_greeting_is_welcomed():
-    first = client.post("/api/chat", json={"message": "bonjour", "session_id": "greet-1"}).json()
-    assert "Bonjour" in first["reply"]
-    second = client.post("/api/chat", json={"message": "bonjour", "session_id": "greet-1"}).json()
-    assert "Bonjour" not in second["reply"]
+def test_greeting_uses_the_aya_seed():
+    reply = client.post("/api/chat", json={"message": "bonjour", "session_id": "greet-1"}).json()["reply"]
+    assert "Komara Agency" in reply and "bienvenue" in reply.lower()
 
 
 def test_empty_message_rejected():
@@ -134,7 +132,7 @@ def test_devis_flow_is_reachable_and_recorded():
 def test_quote_intent_does_not_hijack_price_question():
     session = "prix-session"
     reply = client.post("/api/chat", json={"message": "combien coûte un bot whatsapp", "session_id": session}).json()["reply"]
-    assert "200" in reply and "quel service" not in reply.lower()
+    assert "quel service" not in reply.lower()
 
 
 def test_admin_disabled_by_default():

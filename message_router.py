@@ -10,6 +10,7 @@ from logical_steps import process_devis_step, get_flow_state, start_devis_flow
 from farewell_guard import is_farewell, get_farewell_response
 from sector_reply import get_sector_response
 import rag_engine
+import seed_engine
 
 
 def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
@@ -37,7 +38,17 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
         bot_send_func(chat_id, GENERIC_MESSAGES[lang]["secret_blocked"])
         return True
 
-    # 4. Vérifier les adieux
+    # 4. Réponses d'Aya (seed) : prioritaires, y compris « merci » / « au revoir »
+    #    qui ont leur propre fiche au ton de l'agence. Un parcours en cours
+    #    (devis) garde la main, voir plus bas.
+    in_flow = bool(get_flow_state(chat_id)) or bool(get_pending(chat_id))
+    if not in_flow:
+        seed_hit = seed_engine.find_answer(text, lang)
+        if seed_hit:
+            bot_send_func(chat_id, seed_hit["answer"])
+            return True
+
+    # 4b. Adieux (repli si le seed n'a pas de fiche)
     if is_farewell(text, lang):
         bot_send_func(chat_id, get_farewell_response(lang))
         return True
@@ -66,7 +77,7 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
         bot_send_func(chat_id, start_devis_flow(chat_id, lang))
         return True
 
-    # 8. Recherche RAG avec détection de secteur
+    # 8. Connaissances ajoutées via /admin + anciens fichiers génériques
     rag_response = get_sector_response(text, lang)
     if rag_response:
         bot_send_func(chat_id, rag_response)

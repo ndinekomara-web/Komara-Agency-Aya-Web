@@ -90,6 +90,51 @@
     if (node) node.remove();
   }
 
+  async function showGallery() {
+    try {
+      const data = await api("/api/portfolio");
+      if (!data.items || !data.items.length) return;
+      const wrapper = document.createElement("div");
+      wrapper.className = "msg assistant";
+      const grid = document.createElement("div");
+      grid.className = "gallery";
+      data.items.forEach((item) => {
+        const figure = document.createElement("button");
+        figure.type = "button";
+        figure.className = "shot";
+        figure.setAttribute("aria-label", item.title);
+        const img = document.createElement("img");
+        img.src = item.url;
+        img.alt = item.title;
+        img.loading = "lazy";
+        const caption = document.createElement("span");
+        caption.textContent = item.title;
+        figure.append(img, caption);
+        figure.addEventListener("click", () => openViewer(item));
+        grid.appendChild(figure);
+      });
+      wrapper.appendChild(grid);
+      els.messages.appendChild(wrapper);
+      els.messages.scrollTop = els.messages.scrollHeight;
+    } catch (_) {}
+  }
+
+  function openViewer(item) {
+    const overlay = document.createElement("div");
+    overlay.className = "viewer";
+    const img = document.createElement("img");
+    img.src = item.url;
+    img.alt = item.title;
+    const caption = document.createElement("p");
+    caption.textContent = item.title;
+    overlay.append(img, caption);
+    overlay.addEventListener("click", () => overlay.remove());
+    document.addEventListener("keydown", function esc(event) {
+      if (event.key === "Escape") { overlay.remove(); document.removeEventListener("keydown", esc); }
+    });
+    document.body.appendChild(overlay);
+  }
+
   async function loadHistory() {
     if (!sessionId) return;
     try {
@@ -125,6 +170,7 @@
       });
       removeTyping();
       addBubble("assistant", data.reply);
+      if (data.gallery) await showGallery();
       if (data.lang && data.lang !== lang && config.languages.includes(data.lang)) {
         lang = data.lang;
         els.lang.value = lang;
