@@ -157,6 +157,17 @@ Messagerie, réponses du seed, moteur tolérant aux fautes, parcours de devis,
 photos reçues, alertes, facture PDF, statistiques, exports, anti-spam.
 Le détail des routes est dans `/docs` (FastAPI) une fois le service lancé.
 
+## Catalogue et panier
+
+`catalogue.py` reprend les offres officielles (Bot Scripté 50 €, Chatbot IA
+Vendeur 100 €, Agent IA Premium 150 €, Maintenance 50 €). Dans la
+conversation : *catalogue*, *ajoute 2*, *panier*, *commander*, *vider*.
+La commande suit trois questions (nom, livraison, confirmation) puis est
+enregistrée, une alerte est créée et le panier est vidé.
+
+Les questions de prix (« tarifs », « prix ») restent servies par le seed :
+c'est la grille design, distincte du catalogue.
+
 ## Administration par IP (`/admin`)
 
 Une page d'administration permet d'ajouter des connaissances sans toucher au

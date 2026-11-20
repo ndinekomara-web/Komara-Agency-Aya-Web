@@ -295,6 +295,7 @@ def leads(limit: int = 50) -> list[dict]:
 # ---------------------------------------------------------------- questions sans réponse
 def add_unanswered(session_id: str, question: str, lang: str | None = None) -> None:
     """Note une question restée sans réponse : elle remonte dans /admin."""
+    init_db()
     db.run(
         "INSERT INTO unanswered (session_id, question, lang, created_at) VALUES (?, ?, ?, ?)",
         (session_id, question.strip()[:500], lang, time.time()),
@@ -312,6 +313,7 @@ def unanswered_top(limit: int = 30) -> list[dict[str, Any]]:
 
 # ---------------------------------------------------------------- fichiers des clients
 def add_upload(session_id: str, filename: str, content_type: str, data: bytes) -> int:
+    init_db()
     rows = db.run(
         "INSERT INTO uploads (session_id, filename, content_type, data, created_at) "
         "VALUES (?, ?, ?, ?, ?) RETURNING id",
@@ -340,6 +342,7 @@ def upload_data(upload_id: int) -> dict[str, Any] | None:
 
 # ---------------------------------------------------------------- alertes équipe
 def add_alert(kind: str, title: str, body: str = "") -> int:
+    init_db()
     rows = db.run(
         "INSERT INTO alerts (kind, title, body, seen, created_at) VALUES (?, ?, ?, 0, ?) RETURNING id",
         (kind, title[:200], body[:2000], time.time()),
@@ -358,6 +361,7 @@ def alerts(limit: int = 40) -> list[dict[str, Any]]:
 
 
 def mark_alert_seen(alert_id: int) -> int:
+    init_db()
     rows = db.run("SELECT COUNT(*) AS total FROM alerts WHERE id = ? AND seen = 0", (alert_id,))
     db.run("UPDATE alerts SET seen = 1 WHERE id = ?", (alert_id,))
     return int(rows[0]["total"]) if rows else 0
@@ -365,6 +369,7 @@ def mark_alert_seen(alert_id: int) -> int:
 
 # ---------------------------------------------------------------- messages
 def delete_message(message_id: int, session_id: str) -> int:
+    init_db()
     rows = db.run(
         "SELECT COUNT(*) AS total FROM messages WHERE id = ? AND session_id = ?",
         (message_id, session_id),

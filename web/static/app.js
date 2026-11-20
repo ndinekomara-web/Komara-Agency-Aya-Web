@@ -94,6 +94,18 @@
     toast._t = setTimeout(() => { els.toast.hidden = true; }, 1600);
   }
 
+  // Rendu sûr : on échappe le HTML, puis on met en gras le *texte* (comme
+  // WhatsApp) et on garde les retours à la ligne.
+  function renderText(text) {
+    const escaped = String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    return escaped
+      .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br>");
+  }
+
   function addMessage(role, text, when) {
     els.welcome.hidden = true;
     addDay(when ? new Date(when * 1000) : new Date());
@@ -108,7 +120,7 @@
     }
     const bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.textContent = text;
+    bubble.innerHTML = renderText(text);
     const meta = document.createElement("span");
     meta.className = "meta";
     meta.textContent = when ? new Date(when * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : timeNow();

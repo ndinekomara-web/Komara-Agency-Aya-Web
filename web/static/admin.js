@@ -260,6 +260,98 @@
     }
   });
 
+
+  async function loadOrders() {
+    const list = $("orders");
+    if (!list) return;
+    try {
+      const data = await api("/api/admin/orders");
+      const orders = data.orders || [];
+      list.innerHTML = orders.length ? "" : '<li class="empty">Aucune commande pour le moment.</li>';
+      for (const o of orders) {
+        const li = document.createElement("li");
+        const when = new Date(o.created_at * 1000).toLocaleString("fr-FR");
+        li.innerHTML =
+          '<div class="entry-head"><strong>Commande #' + o.id + "</strong>" +
+          '<span class="badge">' + Number(o.total).toFixed(0) + " \u20ac</span></div>" +
+          '<div class="entry-body">' + o.summary + "</div>" +
+          '<div class="entry-meta">' + (o.customer || "\u2014") + " \u00b7 " +
+          (o.address || "\u2014") + " \u00b7 " + when + "</div>";
+        const invoice = document.createElement("a");
+        invoice.href = "/api/quotes/" + o.id + "/invoice.pdf";
+        invoice.className = "btn small";
+        invoice.textContent = "Facture PDF";
+        li.appendChild(invoice);
+        list.appendChild(li);
+      }
+    } catch (error) {
+      list.innerHTML = '<li class="empty">Impossible de charger les commandes.</li>';
+    }
+  }
+
+  async function loadProducts() {
+    const list = $("products");
+    if (!list) return;
+    try {
+      const data = await api("/api/admin/products");
+      list.innerHTML = "";
+      for (const p of data.products || []) {
+        const li = document.createElement("li");
+        li.innerHTML =
+          '<div class="entry-head"><strong>' + p.name + "</strong>" +
+          '<span class="badge">' + Number(p.price).toFixed(0) + " \u20ac</span></div>" +
+          '<div class="entry-meta">' + p.category + " \u00b7 " +
+          (p.active ? "actif" : "retir\u00e9") + "</div>";
+        const priceInput = document.createElement("input");
+        priceInput.type = "number";
+        priceInput.value = Number(p.price).toFixed(0);
+        priceInput.className = "mini";
+        const save = document.createElement("button");
+        save.className = "btn small";
+        save.textContent = "Prix";
+        save.onclick = async () => {
+          await api("/api/admin/products/" + p.id, {
+            method: "PATCH",
+            body: JSON.stringify({ price: Number(priceInput.value) }),
+          });
+          showStatus("Prix mis \u00e0 jour.", true);
+          loadProducts();
+        };
+        const row = document.createElement("div");
+        row.className = "form-row";
+        row.append(priceInput, save);
+        li.appendChild(row);
+        list.appendChild(li);
+      }
+    } catch (error) {
+      list.innerHTML = '<li class="empty">Catalogue indisponible.</li>';
+    }
+  }
+
+  const productForm = $("product-form");
+  if (productForm) {
+    productForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        await api("/api/admin/products", {
+          method: "POST",
+          body: JSON.stringify({
+            name: $("p-name").value.trim(),
+            price: Number($("p-price").value || 0),
+            description: $("p-desc").value.trim(),
+          }),
+        });
+        $("p-name").value = "";
+        $("p-price").value = "";
+        $("p-desc").value = "";
+        showStatus("Offre ajout\u00e9e.", true);
+        loadProducts();
+      } catch (error) {
+        showStatus(error.message, false);
+      }
+    });
+  }
+
   loadStatus();
   loadAlerts();
   loadAnalytics();
@@ -268,4 +360,6 @@
   loadQuotes();
   loadLeads();
   loadUploads();
+  loadOrders();
+  loadProducts();
 })();

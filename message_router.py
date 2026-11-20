@@ -11,6 +11,7 @@ from farewell_guard import is_farewell, get_farewell_response
 from sector_reply import get_sector_response
 import rag_engine
 import seed_engine
+import checkout
 import closer_skills
 import phone_validation
 import chat_store
@@ -101,6 +102,19 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
                 pass
             bot_send_func(chat_id, _PHONE_THANKS.get(lang, _PHONE_THANKS["fr"]))
             return True
+
+    # 4c. Commande guidée en cours (panier -> nom -> livraison -> confirmation)
+    if checkout.in_checkout(chat_id):
+        order_reply = checkout.step(chat_id, text, lang)
+        if order_reply:
+            bot_send_func(chat_id, order_reply)
+            return True
+
+    # 4d. Catalogue, panier, ajout, commande
+    shop_reply = checkout.handle(chat_id, text, lang)
+    if shop_reply:
+        bot_send_func(chat_id, shop_reply)
+        return True
 
     # 5. Vérifier les questions en attente
     pending = get_pending(chat_id)

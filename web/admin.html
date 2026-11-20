@@ -65,6 +65,24 @@
       </section>
 
       <section class="card">
+        <h2>Commandes</h2>
+        <p class="hint">Panier finalisé par un client : rappeler sous 24h.</p>
+        <ul id="orders" class="entries"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Catalogue</h2>
+        <p class="hint">Prix modifiables sans redéploiement.</p>
+        <ul id="products" class="entries"></ul>
+        <form id="product-form" class="form-row">
+          <input id="p-name" placeholder="Nom de l'offre" required />
+          <input id="p-price" type="number" step="1" min="0" placeholder="Prix €" required />
+          <input id="p-desc" placeholder="Description courte" />
+          <button type="submit" class="btn">Ajouter</button>
+        </form>
+      </section>
+
+      <section class="card">
         <h2>Demandes de devis</h2>
         <ul class="entries" id="quotes"><li class="muted">Chargement…</li></ul>
       </section>

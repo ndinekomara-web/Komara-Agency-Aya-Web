@@ -99,3 +99,15 @@ def unanswered(session_id: str, question: str, lang: str) -> None:
         chat_store.add_unanswered(session_id, question, lang)
     except Exception:  # pragma: no cover
         logger.exception("Question non enregistrée")
+
+
+def order_received(order: dict) -> None:
+    """Une commande du catalogue : le client a choisi, il faut rappeler."""
+    body = (
+        f"Commande #{order.get('id')}\n"
+        f"Articles : {order.get('summary')}\n"
+        f"Total : {order.get('total'):g} EUR\n"
+        f"Nom : {order.get('customer') or '—'}\n"
+        f"Livraison : {order.get('address') or '—'}"
+    )
+    alert("commande", "Nouvelle commande", body)

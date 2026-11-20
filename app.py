@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
+import catalogue
 import chat_store
 import db
 import invoices
@@ -317,6 +318,65 @@ def admin_delete_knowledge(entry_id: int) -> dict:
     removed = chat_store.delete_knowledge(entry_id)
     rag_engine.reload_knowledge_base()
     return {"removed": removed}
+
+
+@app.get("/api/catalogue")
+def public_catalogue() -> dict:
+    """Offres et prix publics (aucune donnée client)."""
+    return {"products": catalogue.products()}
+
+
+@app.get("/api/admin/orders", dependencies=[Depends(require_admin)])
+def admin_orders(limit: int = 50) -> dict:
+    return {"orders": catalogue.orders(max(1, min(limit, 200)))}
+
+
+@app.post("/api/admin/orders/{order_id}/status", dependencies=[Depends(require_admin)])
+def admin_order_status(order_id: int, payload: dict) -> dict:
+    status = str(payload.get("status", "")).strip()
+    if not status:
+        raise HTTPException(status_code=400, detail="Statut manquant.")
+    catalogue.set_order_status(order_id, status)
+    return {"ok": True, "status": status}
+
+
+@app.get("/api/admin/products", dependencies=[Depends(require_admin)])
+def admin_products() -> dict:
+    return {"products": catalogue.products(active_only=False)}
+
+
+@app.post("/api/admin/products", dependencies=[Depends(require_admin)])
+def admin_add_product(payload: dict) -> dict:
+    name = str(payload.get("name", "")).strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Nom manquant.")
+    try:
+        price = float(payload.get("price", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Prix invalide.")
+    product_id = catalogue.add_product(
+        str(payload.get("category", "Service")).strip() or "Service",
+        name,
+        str(payload.get("description", "")).strip(),
+        price,
+    )
+    return {"id": product_id}
+
+
+@app.patch("/api/admin/products/{product_id}", dependencies=[Depends(require_admin)])
+def admin_update_product(product_id: int, payload: dict) -> dict:
+    if "price" in payload:
+        try:
+            catalogue.update_price(product_id, float(payload["price"]))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Prix invalide.")
+    return {"ok": True}
+
+
+@app.delete("/api/admin/products/{product_id}", dependencies=[Depends(require_admin)])
+def admin_delete_product(product_id: int) -> dict:
+    catalogue.deactivate_product(product_id)
+    return {"ok": True}
 
 
 @app.get("/api/portfolio")
