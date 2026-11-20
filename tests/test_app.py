@@ -180,3 +180,28 @@ def test_admin_rejects_foreign_ip():
         assert allowed.json()["is_admin"] is True
     finally:
         aya.ADMIN_ID = ""
+
+
+def test_thinking_delay_bounds():
+    """Toujours entre 3 et 8 secondes, quelle que soit la longueur."""
+    aya.RESPONSE_DELAY_MIN, aya.RESPONSE_DELAY_MAX = 3.0, 8.0
+    try:
+        assert aya._thinking_delay("") == 3.0
+        assert aya._thinking_delay("Réponse courte") >= 3.0
+        assert aya._thinking_delay("x" * 5000) <= 8.0
+        assert aya._thinking_delay("x" * 5000) == 8.0
+    finally:
+        aya.RESPONSE_DELAY_MIN, aya.RESPONSE_DELAY_MAX = 0.0, 0.0
+
+
+def test_delay_applied_in_chat(monkeypatch):
+    """La réponse n'arrive pas instantanément en production."""
+    import time as _time
+
+    aya.RESPONSE_DELAY_MIN, aya.RESPONSE_DELAY_MAX = 0.4, 0.4
+    try:
+        start = _time.monotonic()
+        client.post("/api/chat", json={"message": "prix", "session_id": "delay-1"})
+        assert _time.monotonic() - start >= 0.4
+    finally:
+        aya.RESPONSE_DELAY_MIN, aya.RESPONSE_DELAY_MAX = 0.0, 0.0

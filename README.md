@@ -117,6 +117,8 @@ Toutes les options passent par des variables d'environnement (voir `.env.example
 | `PORT` | Port d'écoute | `8000` |
 | `DEFAULT_LANGUAGE` | Langue de départ | `fr` |
 | `APP_ACCESS_TOKEN` | Mot de passe protégeant la conversation | vide (public) |
+| `RESPONSE_DELAY_MIN` | Attente minimale avant réponse (secondes) | `3` |
+| `RESPONSE_DELAY_MAX` | Attente maximale avant réponse (secondes) | `8` |
 | `ADMIN_ID` | IP(s) autorisées pour `/admin`, séparées par des virgules | vide (désactivé) |
 | `RAG_BACKEND` | `auto`, `keyword` ou `embed` | `auto` |
 | `DATABASE_URL` | Connexion PostgreSQL (sinon SQLite) | vide |

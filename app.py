@@ -10,7 +10,9 @@ depuis le navigateur, comme une application classique.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 import os
 import secrets
 import uuid
@@ -54,6 +56,26 @@ chat_store.init_db()
 # ---------------------------------------------------------------------------
 # Modèles
 # ---------------------------------------------------------------------------
+# Temps de « réflexion » perçu : une réponse instantanée fait robot.
+# Bornes réglables sans redéployer le code.
+RESPONSE_DELAY_MIN = float(os.getenv("RESPONSE_DELAY_MIN", "3"))
+RESPONSE_DELAY_MAX = float(os.getenv("RESPONSE_DELAY_MAX", "8"))
+
+
+def _thinking_delay(reply: str) -> float:
+    """Durée d'attente avant d'afficher la réponse, entre 3 et 8 secondes.
+
+    Une réponse courte se prépare vite, une longue demande plus de temps :
+    l'attente suit la longueur, dans les bornes demandées.
+    """
+    low = max(0.0, RESPONSE_DELAY_MIN)
+    high = max(low, RESPONSE_DELAY_MAX)
+    if high <= 0:
+        return 0.0
+    scaled = low + len(reply or "") / 260.0
+    return round(min(high, max(low, scaled)), 2)
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     session_id: str | None = Field(default=None, max_length=80)
@@ -190,6 +212,7 @@ async def chat(payload: ChatRequest) -> dict:
     chat_store.touch_session(session_id, payload.lang)
     chat_store.add_message(session_id, "user", text, payload.lang)
 
+    started = time.monotonic()
     try:
         result = await run_in_threadpool(_answer, session_id, text, is_new_session)
     except Exception:  # pragma: no cover - garde-fou
@@ -199,6 +222,11 @@ async def chat(payload: ChatRequest) -> dict:
             "reply": GENERIC_MESSAGES.get(lang, GENERIC_MESSAGES["fr"])["no_understand"],
             "lang": lang,
         }
+
+    # Attente maîtrisée : jamais moins de 3 s, jamais plus de 8 s au total.
+    wait = _thinking_delay(result["reply"]) - (time.monotonic() - started)
+    if wait > 0:
+        await asyncio.sleep(wait)
 
     chat_store.add_message(session_id, "assistant", result["reply"], result["lang"])
     return {
