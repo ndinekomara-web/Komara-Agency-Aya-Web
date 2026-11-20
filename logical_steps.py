@@ -62,12 +62,11 @@ def process_devis_step(chat_id: int, user_text: str, lang: str) -> str | None:
         from utils import is_single_digit
         is_digit, num = is_single_digit(user_text)
         if not is_digit:
-            messages = {
-                "fr": "Veuillez répondre avec un numéro entre 1 et 4.",
-                "ar": "يرجى الرد برقم بين 1 و 4.",
-                "en": "Please reply with a number between 1 and 4.",
-            }
-            return messages.get(lang, messages["fr"])
+            # Le client pose une autre question : on abandonne proprement le
+            # parcours au lieu de le bloquer dans « réponds 1 à 4 ».
+            clear_flow_state(chat_id)
+            clear_pending(chat_id)
+            return None
 
         services = {
             1: "Bot WhatsApp",

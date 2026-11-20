@@ -2,15 +2,15 @@
    Stratégie : le réseau d'abord pour la page et les scripts (on a toujours la
    dernière version quand on est en ligne), le cache seulement en secours hors
    ligne. Le nom du cache change à chaque version pour purger l'ancien. */
-const VERSION = "2026-11-18-3";
+const VERSION = "2026-11-20-1";
 const CACHE = "aya-shell-" + VERSION;
 const SHELL = [
   "/",
   "/static/style.css",
   "/static/app.js",
   "/manifest.webmanifest",
-  "/static/icons/icon-192.png",
-  "/static/icons/icon-512.png",
+  "/static/icons/icon-192-v3.png",
+  "/static/icons/icon-512-v3.png",
 ];
 
 self.addEventListener("install", (event) => {

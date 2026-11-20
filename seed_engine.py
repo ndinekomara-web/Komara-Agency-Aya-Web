@@ -157,6 +157,32 @@ def _score(message_norm: str, message_words: set[str], entry: dict[str, Any]) ->
     return min(0.94, 0.55 * recall + 0.45 * precision)
 
 
+def _local_search(message: str) -> str | None:
+    """Second moteur : celui du bot Telegram (fautes, SMS, paraphrases)."""
+    try:
+        import local_search
+    except Exception:
+        return None
+    kb = [
+        {"questions": list(qs), "answer": ans}
+        for qs, ans in (list(aya_seed.SEED_QR) + [e for items in getattr(aya_seed, "SEED_QR_ML", {}).values() for e in items])
+    ]
+    try:
+        answer = local_search.trouver_meilleure_reponse(message, kb, [])
+    except Exception:
+        return None
+    if not answer:
+        return None
+    # Le service doit exister chez Komara Agency (règle du bot Telegram).
+    try:
+        import service_guard
+        if not service_guard.is_compatible(message, message, answer):
+            return None
+    except Exception:
+        pass
+    return answer
+
+
 def find_answer(message: str, lang: str | None = None) -> dict[str, Any] | None:
     """Meilleure fiche pour ce message, ou None."""
     message_norm = _norm(message)
@@ -185,6 +211,11 @@ def find_answer(message: str, lang: str | None = None) -> dict[str, Any] | None:
         best, best_score = _search(idx, languages, lang, message_norm, message_words)
         if best and best_score >= MIN_SCORE:
             return best
+
+    # 2e chance : moteur tolérant (celui du bot Telegram)
+    answer = _local_search(message)
+    if answer:
+        return {"question": message, "answer": answer, "lang": lang or "fr", "score": 0.5, "engine": "local_search"}
     return None
 
 
@@ -210,3 +241,24 @@ def _search(idx, languages, lang, message_norm, message_words):
                 best_score = score
                 best = {**entry, "lang": code, "score": round(score, 3)}
     return best, best_score
+
+
+def find_admin_answer(message: str, lang: str | None = None) -> str | None:
+    """Réponse issue d'une connaissance ajoutée par l'équipe via /admin.
+
+    Elle prime sur le seed : si Komara Agency a écrit une information, c'est
+    elle qui fait foi (livraison, horaires, conditions...).
+    """
+    try:
+        import chat_store
+        import local_search
+    except Exception:
+        return None
+    rows = chat_store.knowledge_entries(lang) if lang else chat_store.knowledge_entries()
+    if not rows:
+        return None
+    kb = [{"questions": [row["title"]], "answer": row["content"]} for row in rows]
+    try:
+        return local_search.trouver_meilleure_reponse(message, kb, [])
+    except Exception:
+        return None

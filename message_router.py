@@ -11,6 +11,45 @@ from farewell_guard import is_farewell, get_farewell_response
 from sector_reply import get_sector_response
 import rag_engine
 import seed_engine
+import closer_skills
+import phone_validation
+import chat_store
+
+
+_PHONE_THANKS = {
+    "fr": "Bien reçu 🙌 J'ai noté ton numéro, l'équipe Komara te contacte rapidement. On prépare quoi en premier ?",
+    "en": "Got it 🙌 I saved your number, the Komara team will reach out shortly. What should we prepare first?",
+    "es": "Anotado 🙌 El equipo de Komara te contacta pronto. ¿Qué preparamos primero?",
+    "ar": "تم الحفظ 🙌 سيتواصل فريق كومارا قريباً. ماذا نحضر أولاً؟",
+}
+
+
+_CANCEL_MSG = {
+    "fr": "D'accord, on laisse le devis de côté. Dis-moi ce qui t'intéresse 👇",
+    "en": "Alright, let's drop the quote. Tell me what you need 👇",
+    "es": "De acuerdo, dejamos el presupuesto. Dime qué necesitas 👇",
+    "ar": "حسناً، نترك عرض السعر. أخبرني بما تحتاجه 👇",
+}
+_CANCEL_RX = re.compile(r"\b(annul\w*|stop|abandon\w*|laisse tomber|cancel)\b", re.I)
+
+
+def _is_cancel(text: str) -> bool:
+    return bool(_CANCEL_RX.search(text))
+
+
+_PHONE_RX = re.compile(r"(?:\+|00)?\d[\d\s.\-]{6,}\d")
+
+
+def _looks_like_phone(text: str) -> bool:
+    """Un numéro dans un message court (« mon numero est 620123456 »)."""
+    stripped = text.strip()
+    if len(stripped) > 45:
+        return False
+    match = _PHONE_RX.search(stripped)
+    if not match:
+        return False
+    digits = sum(ch.isdigit() for ch in match.group(0))
+    return 8 <= digits <= 15
 
 
 def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
@@ -38,20 +77,23 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
         bot_send_func(chat_id, GENERIC_MESSAGES[lang]["secret_blocked"])
         return True
 
-    # 4. Réponses d'Aya (seed) : prioritaires, y compris « merci » / « au revoir »
-    #    qui ont leur propre fiche au ton de l'agence. Un parcours en cours
-    #    (devis) garde la main, voir plus bas.
-    in_flow = bool(get_flow_state(chat_id)) or bool(get_pending(chat_id))
-    if not in_flow:
-        seed_hit = seed_engine.find_answer(text, lang)
-        if seed_hit:
-            bot_send_func(chat_id, seed_hit["answer"])
-            return True
-
-    # 4b. Adieux (repli si le seed n'a pas de fiche)
-    if is_farewell(text, lang):
-        bot_send_func(chat_id, get_farewell_response(lang))
+    # 3b. Demandes interdites (faux documents, piratage, deepfakes...)
+    if closer_skills.is_offlimits(text):
+        bot_send_func(chat_id, closer_skills.refusal_message(lang))
         return True
+
+    # 3c. Client mécontent : empathie + passage direct au boss
+    if closer_skills.is_negative_emotion(text):
+        bot_send_func(chat_id, closer_skills.empathy_message(lang))
+        return True
+
+    # 3d. Numéro de téléphone laissé par le client : on le garde pour l'équipe
+    if _looks_like_phone(text):
+        valid, _reason = phone_validation.check(text)
+        if valid:
+            chat_store.add_lead(chat_id, phone_validation.normalize(text), text)
+            bot_send_func(chat_id, _PHONE_THANKS.get(lang, _PHONE_THANKS["fr"]))
+            return True
 
     # 5. Vérifier les questions en attente
     pending = get_pending(chat_id)
@@ -66,16 +108,43 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
 
     # 6. Vérifier les flux actifs (devis, etc.)
     flow = get_flow_state(chat_id)
+    if flow and _is_cancel(text):
+        from logical_steps import clear_flow_state
+        clear_flow_state(chat_id)
+        clear_pending(chat_id)
+        bot_send_func(chat_id, _CANCEL_MSG.get(lang, _CANCEL_MSG["fr"]))
+        return True
     if flow:
         flow_response = process_devis_step(chat_id, text, lang)
         if flow_response:
             bot_send_func(chat_id, flow_response)
             return True
 
-    # 7. Demande de devis : le parcours guidé est plus utile qu'une fiche tarif
-    if is_quote_intent(text):
+    # 3e. Demande de devis explicite : parcours guidé (service, budget, confirmation)
+    if is_quote_intent(text) and not get_flow_state(chat_id):
         bot_send_func(chat_id, start_devis_flow(chat_id, lang))
         return True
+
+    # 3f. Connaissances écrites par l'équipe via /admin : elles font foi
+    admin_answer = seed_engine.find_admin_answer(text, lang)
+    if admin_answer:
+        bot_send_func(chat_id, admin_answer)
+        return True
+
+    # 4b. Adieux (repli si le seed n'a pas de fiche)
+    if is_farewell(text, lang):
+        bot_send_func(chat_id, get_farewell_response(lang))
+        return True
+
+    # 4. Réponses d'Aya (seed) : prioritaires, y compris « merci » / « au revoir »
+    #    qui ont leur propre fiche au ton de l'agence. Un parcours en cours
+    #    (devis) garde la main, voir plus bas.
+    in_flow = bool(get_flow_state(chat_id)) or bool(get_pending(chat_id))
+    if not in_flow:
+        seed_hit = seed_engine.find_answer(text, lang)
+        if seed_hit:
+            bot_send_func(chat_id, seed_hit["answer"])
+            return True
 
     # 8. Connaissances ajoutées via /admin + anciens fichiers génériques
     rag_response = get_sector_response(text, lang)

@@ -264,6 +264,13 @@ def get_portfolio() -> dict:
     return {"items": portfolio.list_items()}
 
 
+@app.get("/api/leads", dependencies=[Depends(require_access)])
+def list_leads(limit: int = 50) -> dict:
+    """Numéros laissés par les clients (réservé à l'équipe)."""
+    limit = max(1, min(limit, 200))
+    return {"leads": chat_store.leads(limit)}
+
+
 @app.get("/api/quotes", dependencies=[Depends(require_access)])
 def list_quotes(limit: int = 50) -> dict:
     """Demandes de devis confirmées (réservé à l'équipe)."""

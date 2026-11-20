@@ -15,6 +15,7 @@ import db
 
 
 def _schema() -> list[str]:
+    """Instructions de création, adaptées au moteur réellement utilisé."""
     if db.backend() == "postgres":
         return [
             """
@@ -55,6 +56,15 @@ def _schema() -> list[str]:
                 created_at DOUBLE PRECISION NOT NULL
             )
             """,
+            """
+            CREATE TABLE IF NOT EXISTS leads (
+                id BIGSERIAL PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                note TEXT,
+                created_at DOUBLE PRECISION NOT NULL
+            )
+            """,
         ]
     return [
         """
@@ -92,6 +102,15 @@ def _schema() -> list[str]:
             lang TEXT NOT NULL,
             title TEXT NOT NULL,
             content TEXT NOT NULL,
+            created_at REAL NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS leads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            note TEXT,
             created_at REAL NOT NULL
         )
         """,
@@ -197,3 +216,21 @@ def stats() -> dict[str, Any]:
         "knowledge": int(knowledge[0]["total"]) if knowledge else 0,
         "backend": db.backend(),
     }
+
+
+def add_lead(session_id: str, phone: str, note: str = "") -> int:
+    """Enregistre un numéro laissé par un client (visible dans /admin)."""
+    init_db()
+    db.run(
+        "INSERT INTO leads (session_id, phone, note, created_at) VALUES (?, ?, ?, ?)",
+        (session_id, phone, note, time.time()),
+    )
+    return 1
+
+
+def leads(limit: int = 50) -> list[dict]:
+    init_db()
+    return db.run(
+        "SELECT id, session_id, phone, note, created_at FROM leads ORDER BY created_at DESC LIMIT ?",
+        (limit,),
+    )

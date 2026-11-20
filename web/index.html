@@ -4,70 +4,113 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Aya — Komara Agency</title>
-  <meta name="description" content="Aya, l'assistante de Komara Agency : services, tarifs, devis et accompagnement digital." />
-  <meta name="theme-color" content="#0b0f14" />
+  <meta name="description" content="Aya, l'assistante de Komara Agency : bots, sites, logos et automatisation." />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#12100e" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Aya" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
-  <link rel="icon" href="/static/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192-v3.png" />
+  <link rel="icon" href="/static/icons/icon-192-v3.png" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div class="app" id="app">
+  <div class="splash" id="splash">
+    <img src="/static/icons/avatar.png" alt="" class="splash-logo" />
+    <p class="splash-name">Aya</p>
+    <p class="splash-sub">Komara Agency</p>
+  </div>
+
+  <div class="app" id="app" hidden>
     <header class="topbar">
-      <div class="brand">
-        <img src="/static/icons/avatar.png" alt="" class="brand-logo" />
-        <div class="brand-text">
-          <strong>Aya</strong>
-          <span>Komara Agency</span>
-        </div>
+      <img src="/static/icons/avatar.png" alt="Aya" class="avatar" />
+      <div class="who">
+        <strong>Aya</strong>
+        <span><i class="dot"></i>Komara Agency · en ligne</span>
       </div>
-      <div class="topbar-actions">
-        <select id="lang" aria-label="Langue">
-          <option value="fr">FR</option>
-          <option value="en">EN</option>
-          <option value="ar">AR</option>
-        </select>
-        <button id="install" class="ghost" hidden>Installer</button>
-        <button id="reset" class="ghost" title="Nouvelle conversation">Nouveau</button>
-      </div>
+      <select id="lang" class="lang" aria-label="Langue">
+        <option value="fr">FR</option>
+        <option value="ar">AR</option>
+        <option value="en">EN</option>
+      </select>
+      <button id="settings" class="icon-btn" title="Réglages" aria-label="Réglages">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      <button id="new" class="icon-btn" title="Nouvelle conversation" aria-label="Nouvelle conversation">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
     </header>
 
-    <main id="messages" class="messages" aria-live="polite">
-      <section class="welcome" id="welcome">
-        <img src="/static/icons/avatar.png" alt="" class="welcome-logo" />
-        <h1>Bonjour, je suis Aya</h1>
-        <p>Assistante de Komara Agency. Bots WhatsApp, Telegram et TikTok, design graphique, accompagnement digital.</p>
-        <div class="suggestions">
-          <button class="chip" data-prompt="Quels sont vos tarifs ?">Vos tarifs</button>
-          <button class="chip" data-prompt="Je veux un bot WhatsApp pour mon business">Un bot WhatsApp</button>
-          <button class="chip" data-prompt="Je veux un devis">Demander un devis</button>
-          <button class="chip" data-prompt="Montre-moi vos réalisations">Vos réalisations</button>
-        </div>
-      </section>
-    </main>
+    <main class="thread" id="messages" aria-live="polite"></main>
 
-    <form id="composer" class="composer">
-      <textarea id="input" rows="1" placeholder="Écrivez votre message…" autocomplete="off"></textarea>
+    <section class="welcome" id="welcome">
+      <img src="/static/icons/avatar.png" alt="" class="welcome-logo" />
+      <h1>Salut, c'est Aya</h1>
+      <p class="welcome-sub">Bots qui vendent, sites, logos et automatisation. Dis-moi ce que tu veux lancer.</p>
+      <div class="chips">
+        <button class="chip" data-say="services">Nos services</button>
+        <button class="chip" data-say="prix">Les tarifs</button>
+        <button class="chip" data-say="portfolio">Réalisations</button>
+        <button class="chip" data-say="je veux un devis">Demander un devis</button>
+      </div>
+    </section>
+
+    <button id="install" class="install" hidden>
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>
+      Installer l'application
+    </button>
+
+    <form class="composer" id="composer">
+      <textarea id="input" rows="1" placeholder="Écris ton message…" autocomplete="off"></textarea>
       <button id="send" type="submit" aria-label="Envoyer">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12 2-12 2z"/></svg>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6l.1 6.5L15 12 3.5 13.9z"/></svg>
       </button>
     </form>
-    <p class="hint">Aya est une IA supervisée par l'équipe Komara Agency.</p>
+    <p class="legal">Aya répond avec les informations officielles de Komara Agency.</p>
   </div>
 
   <div class="modal" id="login" hidden>
-    <form class="modal-card" id="login-form">
+    <form class="login-card" id="login-form">
+      <img src="/static/icons/avatar.png" alt="" class="login-logo" />
       <h2>Accès protégé</h2>
-      <p>Entrez le mot de passe fourni par Komara Agency.</p>
-      <input id="login-token" type="password" placeholder="Mot de passe" autocomplete="current-password" />
+      <p>Entre le mot de passe fourni par Komara Agency.</p>
+      <input id="login-token" type="password" placeholder="Mot de passe" autocomplete="current-password" required />
       <button type="submit">Entrer</button>
       <p class="error" id="login-error" hidden></p>
     </form>
   </div>
 
-  <script src="/static/app.js" defer></script>
+  <div class="sheet" id="settings-sheet" hidden>
+    <div class="sheet-card">
+      <div class="sheet-head">
+        <img src="/static/icons/logo-aya.png" alt="" class="sheet-logo" />
+        <div>
+          <strong>Aya</strong>
+          <span id="sheet-version">Komara Agency</span>
+        </div>
+        <button class="sheet-close" id="sheet-close" aria-label="Fermer">×</button>
+      </div>
+      <div class="sheet-row">
+        <span>Langue</span>
+        <select id="sheet-lang" class="lang">
+          <option value="fr">Français</option>
+          <option value="ar">العربية</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+      <button class="sheet-action" id="act-install" hidden>Installer sur mon téléphone</button>
+      <button class="sheet-action" id="act-clear">Vider la conversation</button>
+      <a class="sheet-action" id="act-admin" href="/admin" hidden>Administration</a>
+      <p class="sheet-note">Aya répond avec les informations officielles de Komara Agency. Les demandes de devis et les numéros laissés sont enregistrés pour l'équipe.</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <div class="viewer" id="viewer" hidden>
+    <img id="viewer-img" alt="" />
+    <button class="viewer-close" id="viewer-close" aria-label="Fermer">×</button>
+  </div>
+
+  <script src="/static/app.js"></script>
 </body>
 </html>

@@ -134,6 +134,17 @@ En mode `auto`, Aya utilise les embeddings s'ils sont installés et bascule
 sinon sur les mots-clés : l'application ne tombe jamais en panne à cause
 d'une dépendance manquante.
 
+## Interface
+
+Messagerie façon WhatsApp : horodatage des messages, séparateurs de jour,
+appui long sur un message pour le copier, panneau *Réglages* (langue,
+installation, vider la conversation, lien d'administration).
+
+Les icônes viennent de l'affiche officielle (`web/static/icons/logo-aya.png`,
+`icon-192-v3.png`, `icon-512-v3.png`, `icon-maskable-512-v3.png`). Pour changer
+d'affiche, remplacez ces fichiers en gardant les mêmes noms, puis incrémentez
+`VERSION` dans `web/service-worker.js`.
+
 ## Administration par IP (`/admin`)
 
 Une page d'administration permet d'ajouter des connaissances sans toucher au
