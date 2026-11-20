@@ -466,6 +466,8 @@ def client_config() -> dict:
         "default_language": DEFAULT_LANGUAGE,
         "languages": SUPPORTED_LANGUAGES,
         "auth_required": bool(APP_ACCESS_TOKEN),
+        "contact_whatsapp": os.getenv("KOMARA_WHATSAPP", "+212 701 986 219"),
+        "deposit_available": bool(os.getenv("DEPOSIT_LINK", "").strip()),
     }
 
 
