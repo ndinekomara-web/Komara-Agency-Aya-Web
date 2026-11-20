@@ -205,3 +205,74 @@ def test_delay_applied_in_chat(monkeypatch):
         assert _time.monotonic() - start >= 0.4
     finally:
         aya.RESPONSE_DELAY_MIN, aya.RESPONSE_DELAY_MAX = 0.0, 0.0
+
+
+def test_alert_on_quote_and_phone_and_unanswered():
+    aya.ADMIN_ID = "testclient"
+    try:
+        for message in ("devis", "1", "300 euros", "oui"):
+            client.post("/api/chat", json={"message": message, "session_id": "alert-1"})
+        client.post("/api/chat", json={"message": "mon numero est 620123456", "session_id": "alert-1"})
+        client.post("/api/chat", json={"message": "blabla qsdf", "session_id": "alert-1"})
+
+        alerts = client.get("/api/admin/alerts").json()["alerts"]
+        kinds = {a["kind"] for a in alerts}
+        assert "devis" in kinds and "telephone" in kinds
+
+        questions = client.get("/api/admin/unanswered").json()["questions"]
+        assert any("blabla" in q["question"] for q in questions)
+
+        stats = client.get("/api/admin/analytics").json()
+        assert stats["quotes"] >= 1 and stats["leads"] >= 1
+    finally:
+        aya.ADMIN_ID = ""
+
+
+def test_invoice_pdf_and_csv_exports():
+    aya.ADMIN_ID = "testclient"
+    try:
+        quotes = client.get("/api/quotes").json()["quotes"]
+        quote_id = quotes[0]["id"]
+        pdf = client.get(f"/api/quotes/{quote_id}/invoice.pdf")
+        assert pdf.status_code == 200
+        assert pdf.content.startswith(b"%PDF")
+        assert b"KOMARA AGENCY" in pdf.content
+
+        csv_quotes = client.get("/api/admin/export/quotes.csv")
+        assert csv_quotes.status_code == 200 and "service" in csv_quotes.text
+        csv_leads = client.get("/api/admin/export/leads.csv")
+        assert csv_leads.status_code == 200 and "phone" in csv_leads.text
+    finally:
+        aya.ADMIN_ID = ""
+
+
+def test_upload_and_search_and_delete():
+    aya.ADMIN_ID = "testclient"
+    try:
+        sent = client.post(
+            "/api/upload",
+            files={"file": ("logo.png", b"contenu-image", "image/png")},
+            data={"session_id": "up-1"},
+        )
+        assert sent.status_code == 200
+        upload_id = sent.json()["id"]
+        assert client.get(f"/api/admin/uploads/{upload_id}").content == b"contenu-image"
+
+        client.post("/api/chat", json={"message": "livraison speciale kankan", "session_id": "up-1"})
+        found = client.get("/api/search", params={"session_id": "up-1", "q": "kankan"}).json()["messages"]
+        assert found
+        assert client.delete(f"/api/message/{found[0]['id']}", params={"session_id": "up-1"}).json()["removed"] == 1
+    finally:
+        aya.ADMIN_ID = ""
+
+
+def test_rate_limit_blocks_flood():
+    aya.RATE_LIMIT = 3
+    try:
+        codes = [
+            client.post("/api/chat", json={"message": "prix", "session_id": "flood-1"}).status_code
+            for _ in range(5)
+        ]
+        assert 429 in codes
+    finally:
+        aya.RATE_LIMIT = 15

@@ -115,6 +115,14 @@ def process_devis_step(chat_id: int, user_text: str, lang: str) -> str | None:
                     flow["data"].get("budget", ""),
                     lang,
                 )
+                import notify
+
+                notify.quote_confirmed(
+                    str(chat_id),
+                    flow["data"].get("service", ""),
+                    flow["data"].get("budget", ""),
+                    lang,
+                )
             except Exception:
                 pass
             clear_flow_state(chat_id)

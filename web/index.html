@@ -60,11 +60,20 @@
     </button>
 
     <form class="composer" id="composer">
+      <button type="button" id="attach" class="composer-btn" aria-label="Envoyer une photo">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8-8a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.8 1.8 0 0 1-2.5-2.5l7.3-7.3"/></svg>
+      </button>
+      <input type="file" id="file" accept="image/*,.pdf,.zip" hidden />
       <textarea id="input" rows="1" placeholder="Écris ton message…" autocomplete="off"></textarea>
       <button id="send" type="submit" aria-label="Envoyer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6l.1 6.5L15 12 3.5 13.9z"/></svg>
       </button>
     </form>
+    <div class="searchbar" id="searchbar" hidden>
+      <input id="search-input" type="search" placeholder="Chercher un message…" />
+      <button id="search-close" type="button" aria-label="Fermer">×</button>
+    </div>
+
     <p class="legal">Aya répond avec les informations officielles de Komara Agency.</p>
   </div>
 
@@ -98,6 +107,8 @@
         </select>
       </div>
       <button class="sheet-action" id="act-install" hidden>Installer sur mon téléphone</button>
+      <a class="sheet-action" id="act-contact" href="#" target="_blank" rel="noopener">Parler à Ndine sur WhatsApp</a>
+      <button class="sheet-action" id="act-search">Chercher dans la conversation</button>
       <button class="sheet-action" id="act-clear">Vider la conversation</button>
       <a class="sheet-action" id="act-admin" href="/admin" hidden>Administration</a>
       <p class="sheet-note">Aya répond avec les informations officielles de Komara Agency. Les demandes de devis et les numéros laissés sont enregistrés pour l'équipe.</p>

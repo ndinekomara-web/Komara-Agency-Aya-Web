@@ -18,7 +18,7 @@ import secrets
 import uuid
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import UploadFile, File, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -26,6 +26,8 @@ from starlette.concurrency import run_in_threadpool
 
 import chat_store
 import db
+import invoices
+import notify
 import portfolio
 import rag_engine
 import seed_engine
@@ -74,6 +76,25 @@ def _thinking_delay(reply: str) -> float:
         return 0.0
     scaled = low + len(reply or "") / 260.0
     return round(min(high, max(low, scaled)), 2)
+
+
+# Anti-spam : quelques messages par minute et par session, jamais bloquant
+# pour un client normal.
+RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_MINUTE", "15"))
+_rate_seen: dict[str, list[float]] = {}
+
+
+def _rate_ok(key: str) -> bool:
+    if RATE_LIMIT <= 0:
+        return True
+    now = time.monotonic()
+    window = [t for t in _rate_seen.get(key, []) if now - t < 60]
+    if len(window) >= RATE_LIMIT:
+        _rate_seen[key] = window
+        return False
+    window.append(now)
+    _rate_seen[key] = window
+    return True
 
 
 class ChatRequest(BaseModel):
@@ -204,6 +225,12 @@ async def chat(payload: ChatRequest) -> dict:
     if not text:
         raise HTTPException(status_code=400, detail="Message vide.")
 
+    if not _rate_ok(payload.session_id or "anonyme"):
+        raise HTTPException(
+            status_code=429,
+            detail="Trop de messages d'un coup. Patiente une minute, je réponds à tout.",
+        )
+
     session_id = payload.session_id or str(uuid.uuid4())
     if payload.lang in SUPPORTED_LANGUAGES:
         change_language(session_id, payload.lang)
@@ -222,6 +249,11 @@ async def chat(payload: ChatRequest) -> dict:
             "reply": GENERIC_MESSAGES.get(lang, GENERIC_MESSAGES["fr"])["no_understand"],
             "lang": lang,
         }
+
+    # Question restée sans réponse : notée pour /admin (le bot s'améliore ensuite)
+    generic = GENERIC_MESSAGES.get(result["lang"], GENERIC_MESSAGES["fr"])["no_understand"]
+    if result["reply"].strip() == generic:
+        notify.unanswered(session_id, text, result["lang"])
 
     # Attente maîtrisée : jamais moins de 3 s, jamais plus de 8 s au total.
     wait = _thinking_delay(result["reply"]) - (time.monotonic() - started)
@@ -290,6 +322,119 @@ def admin_delete_knowledge(entry_id: int) -> dict:
 @app.get("/api/portfolio")
 def get_portfolio() -> dict:
     return {"items": portfolio.list_items()}
+
+
+@app.post("/api/upload", dependencies=[Depends(require_access)])
+async def upload(file: UploadFile = File(...), session_id: str = "") -> dict:
+    """Photo ou fichier envoyé par un client (logo, produit, ancienne affiche)."""
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Fichier trop lourd (8 Mo maximum).")
+    if not data:
+        raise HTTPException(status_code=400, detail="Fichier vide.")
+    session = session_id or "anonyme"
+    upload_id = chat_store.add_upload(session, file.filename or "fichier", file.content_type or "", data)
+    notify.file_received(session, file.filename or "fichier")
+
+    lang = get_language(session)
+    reply = {
+        "fr": "Bien reçu 📎 J'ai transmis le fichier à l'équipe Komara. Dis-moi ce que tu veux qu'on en fasse : logo, affiche, site, bot ?",
+        "en": "Got it 📎 I passed the file to the Komara team. Tell me what you want: logo, poster, website, bot?",
+        "es": "Recibido 📎 Lo pasé al equipo Komara. ¿Qué quieres: logo, cartel, sitio, bot?",
+        "ar": "تم الاستلام 📎 أرسلته لفريق كومارا. ماذا تريد: شعار، ملصق، موقع، بوت؟",
+    }.get(lang, "Bien reçu 📎 J'ai transmis le fichier à l'équipe Komara.")
+    chat_store.add_message(session, "user", f"📎 {file.filename or 'fichier'}", lang)
+    chat_store.add_message(session, "assistant", reply, lang)
+    return {"id": upload_id, "filename": file.filename, "reply": reply, "session_id": session}
+
+
+@app.get("/api/admin/uploads", dependencies=[Depends(require_admin)])
+def admin_uploads(limit: int = 50) -> dict:
+    return {"uploads": chat_store.uploads(max(1, min(limit, 200)))}
+
+
+@app.get("/api/admin/uploads/{upload_id}", dependencies=[Depends(require_admin)])
+def admin_upload(upload_id: int):
+    row = chat_store.upload_data(upload_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Fichier introuvable.")
+    return Response(
+        content=row["data"],
+        media_type=row.get("content_type") or "application/octet-stream",
+        headers={"Content-Disposition": f'inline; filename="{row["filename"]}"'},
+    )
+
+
+@app.get("/api/admin/alerts", dependencies=[Depends(require_admin)])
+def admin_alerts(limit: int = 40) -> dict:
+    return {"alerts": chat_store.alerts(max(1, min(limit, 200)))}
+
+
+@app.post("/api/admin/alerts/{alert_id}/seen", dependencies=[Depends(require_admin)])
+def admin_alert_seen(alert_id: int) -> dict:
+    return {"updated": chat_store.mark_alert_seen(alert_id)}
+
+
+@app.get("/api/admin/unanswered", dependencies=[Depends(require_admin)])
+def admin_unanswered(limit: int = 30) -> dict:
+    return {"questions": chat_store.unanswered_top(max(1, min(limit, 200)))}
+
+
+@app.get("/api/admin/analytics", dependencies=[Depends(require_admin)])
+def admin_analytics(days: int = 14) -> dict:
+    return chat_store.analytics(max(1, min(days, 90)))
+
+
+@app.get("/api/admin/export/{kind}.csv", dependencies=[Depends(require_admin)])
+def admin_export(kind: str):
+    if kind == "quotes":
+        rows, header = chat_store.quotes(500), ["id", "service", "budget", "lang", "created_at"]
+    elif kind == "leads":
+        rows, header = chat_store.leads(500), ["id", "phone", "note", "created_at"]
+    else:
+        raise HTTPException(status_code=404, detail="Export inconnu (quotes ou leads).")
+    lines = [";".join(header)]
+    for row in rows:
+        lines.append(";".join(str(row.get(key, "")).replace(";", ",") for key in header))
+    return Response(
+        content="\ufeff" + "\n".join(lines),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="aya-{kind}.csv"'},
+    )
+
+
+@app.get("/api/quotes/{quote_id}/invoice.pdf", dependencies=[Depends(require_admin)])
+def quote_invoice(quote_id: int):
+    rows = [q for q in chat_store.quotes(500) if int(q["id"]) == quote_id]
+    if not rows:
+        raise HTTPException(status_code=404, detail="Devis introuvable.")
+    quote = rows[0]
+    pdf = invoices.build_quote_pdf(
+        reference=f"AYA-{quote_id:05d}",
+        service=quote.get("service", ""),
+        budget=quote.get("budget", ""),
+        created_at=quote.get("created_at"),
+        deposit_link=os.getenv("DEPOSIT_LINK", "").strip(),
+        contact=os.getenv("KOMARA_WHATSAPP", ""),
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="facture-{quote_id}.pdf"'},
+    )
+
+
+@app.delete("/api/message/{message_id}", dependencies=[Depends(require_access)])
+def delete_message(message_id: int, session_id: str) -> dict:
+    return {"removed": chat_store.delete_message(message_id, session_id)}
+
+
+@app.get("/api/search", dependencies=[Depends(require_access)])
+def search(session_id: str, q: str) -> dict:
+    needle = q.strip()
+    if len(needle) < 2:
+        return {"messages": []}
+    return {"messages": chat_store.search_messages(session_id, needle)}
 
 
 @app.get("/api/leads", dependencies=[Depends(require_access)])

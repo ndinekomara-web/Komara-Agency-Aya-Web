@@ -91,7 +91,14 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
     if _looks_like_phone(text):
         valid, _reason = phone_validation.check(text)
         if valid:
-            chat_store.add_lead(chat_id, phone_validation.normalize(text), text)
+            phone = phone_validation.normalize(text)
+            chat_store.add_lead(chat_id, phone, text)
+            try:
+                import notify
+
+                notify.phone_captured(str(chat_id), phone)
+            except Exception:
+                pass
             bot_send_func(chat_id, _PHONE_THANKS.get(lang, _PHONE_THANKS["fr"]))
             return True
 

@@ -29,6 +29,13 @@
     actClear: $("#act-clear"),
     actAdmin: $("#act-admin"),
     toast: $("#toast"),
+    attach: $("#attach"),
+    file: $("#file"),
+    actContact: $("#act-contact"),
+    actSearch: $("#act-search"),
+    searchbar: $("#searchbar"),
+    searchInput: $("#search-input"),
+    searchClose: $("#search-close"),
   };
 
   let config = { auth_required: false, languages: ["fr", "ar", "en"], default_language: "fr" };
@@ -262,6 +269,31 @@
   }
 
   /* ------------------------------ événements ------------------------------ */
+  async function sendFile(file) {
+    if (!file) return;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("session_id", sessionId);
+    addMessage("user", `📎 ${file.name}`);
+    addTyping();
+    try {
+      const response = await fetch("/api/upload", { method: "POST", body: form, credentials: "same-origin" });
+      if (!response.ok) throw new Error("upload");
+      const data = await response.json();
+      removeTyping();
+      addMessage("assistant", data.reply || "Bien reçu 📎 J'ai transmis le fichier à l'équipe Komara.");
+    } catch {
+      removeTyping();
+      addMessage("assistant", "Le fichier n'est pas passé. Réessaie avec une image plus légère.");
+    }
+  }
+
+  els.attach.addEventListener("click", () => els.file.click());
+  els.file.addEventListener("change", () => {
+    sendFile(els.file.files[0]);
+    els.file.value = "";
+  });
+
   els.form.addEventListener("submit", (event) => {
     event.preventDefault();
     send();
@@ -338,6 +370,38 @@
     els.lang.value = els.sheetLang.value;
     els.lang.dispatchEvent(new Event("change"));
   });
+  els.actContact.addEventListener("click", () => {
+    const phone = (config.contact_whatsapp || "").replace(/[^\d]/g, "");
+    const text = encodeURIComponent("Bonjour Ndine, je viens de la part d'Aya.");
+    els.actContact.href = `https://wa.me/${phone}?text=${text}`;
+  });
+
+  els.actSearch.addEventListener("click", () => {
+    els.sheet.hidden = true;
+    els.searchbar.hidden = false;
+    els.searchInput.focus();
+  });
+
+  els.searchClose.addEventListener("click", () => {
+    els.searchbar.hidden = true;
+    els.searchInput.value = "";
+    document.querySelectorAll(".mark").forEach((el) => {
+      el.replaceWith(document.createTextNode(el.textContent));
+    });
+  });
+
+  els.searchInput.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter") return;
+    const needle = els.searchInput.value.trim();
+    if (needle.length < 2) return;
+    try {
+      const data = await api(`/api/search?session_id=${encodeURIComponent(sessionId)}&q=${encodeURIComponent(needle)}`);
+      toast(data.messages.length ? `${data.messages.length} message(s) trouvé(s)` : "Aucun message trouvé");
+    } catch {
+      toast("Recherche indisponible");
+    }
+  });
+
   els.actClear.addEventListener("click", () => {
     els.sheet.hidden = true;
     els.new.click();

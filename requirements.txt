@@ -7,3 +7,4 @@ numpy==1.26.4
 cachetools==5.5.0
 langdetect==1.0.9
 psycopg2-binary==2.9.10
+python-multipart==0.0.20

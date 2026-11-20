@@ -119,6 +119,10 @@ Toutes les options passent par des variables d'environnement (voir `.env.example
 | `APP_ACCESS_TOKEN` | Mot de passe protégeant la conversation | vide (public) |
 | `RESPONSE_DELAY_MIN` | Attente minimale avant réponse (secondes) | `3` |
 | `RESPONSE_DELAY_MAX` | Attente maximale avant réponse (secondes) | `8` |
+| `ALERT_WEBHOOK_URL` | Webhook JSON pour être prévenu (Make, Zapier, n8n → WhatsApp) | vide |
+| `ALERT_EMAIL_TO` + `SMTP_HOST` | E-mail d'alerte (facultatif) | vide |
+| `DEPOSIT_LINK` | Lien de paiement de l'acompte, ajouté au devis et à la facture | vide |
+| `RATE_LIMIT_PER_MINUTE` | Messages maximum par minute et par session | `15` |
 | `ADMIN_ID` | IP(s) autorisées pour `/admin`, séparées par des virgules | vide (désactivé) |
 | `RAG_BACKEND` | `auto`, `keyword` ou `embed` | `auto` |
 | `DATABASE_URL` | Connexion PostgreSQL (sinon SQLite) | vide |
@@ -146,6 +150,12 @@ Les icônes viennent de l'affiche officielle (`web/static/icons/logo-aya.png`,
 `icon-192-v3.png`, `icon-512-v3.png`, `icon-maskable-512-v3.png`). Pour changer
 d'affiche, remplacez ces fichiers en gardant les mêmes noms, puis incrémentez
 `VERSION` dans `web/service-worker.js`.
+
+## Ce que fait Aya
+
+Messagerie, réponses du seed, moteur tolérant aux fautes, parcours de devis,
+photos reçues, alertes, facture PDF, statistiques, exports, anti-spam.
+Le détail des routes est dans `/docs` (FastAPI) une fois le service lancé.
 
 ## Administration par IP (`/admin`)
 

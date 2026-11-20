@@ -445,3 +445,46 @@ body::before {
   z-index: 55;
   animation: rise .2s ease both;
 }
+
+/* ---------- Pièce jointe + recherche ---------- */
+.composer-btn {
+  width: 38px; height: 38px;
+  flex: 0 0 38px;
+  display: grid; place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+}
+.composer-btn:active { color: var(--gold); }
+
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 6px;
+  padding: 6px 6px 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.searchbar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14.5px;
+  padding: 6px 0;
+}
+.searchbar button {
+  width: 30px; height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+}
+.mark { background: rgba(245, 189, 100, .28); border-radius: 4px; }
