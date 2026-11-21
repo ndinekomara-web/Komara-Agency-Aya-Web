@@ -157,6 +157,24 @@ Messagerie, réponses du seed, moteur tolérant aux fautes, parcours de devis,
 photos reçues, alertes, facture PDF, statistiques, exports, anti-spam.
 Le détail des routes est dans `/docs` (FastAPI) une fois le service lancé.
 
+## Prix officiels
+
+Les prix suivent la grille du site officiel (komaraagency.github.io/komara-agency-site) :
+
+| Offre | Prix |
+| --- | --- |
+| Logo seul | 50 € |
+| Pack Premium (logo + identité) | 150 € |
+| Affiche / visuel | 30 € |
+| Site vitrine | 250 € |
+| Retouche photo | 10 € |
+| Bot Telegram scripté | 50 € |
+| Bot WhatsApp vendeur | 100 € |
+| Agent IA Premium | 150 € |
+| Maintenance mensuelle | 50 €/mois |
+
+Express 24h : +30 %. Paiement : 50 % pour démarrer, 50 % à la livraison.
+
 ## Catalogue et panier
 
 `catalogue.py` reprend les offres officielles (Bot Scripté 50 €, Chatbot IA

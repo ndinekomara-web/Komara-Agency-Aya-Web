@@ -61,7 +61,14 @@ _ADD_RX = re.compile(r"^(?:ajoute|ajouter|add|prends|je prends)\s+(\d+)$", re.I)
 _NUMBER_RX = re.compile(r"^(\d+)$")
 # « tarifs », « prix » et « services » restent au seed : c'est la grille
 # officielle. « catalogue » ouvre les offres achetables (panier).
-_CATALOGUE_RX = re.compile(r"\b(catalogue|produits?|boutique|offres?)\b", re.I)
+# Demande explicite seulement : « j'ai une boutique » décrit une activité, ça
+# n'ouvre pas le catalogue. On exige le mot seul ou une formule de demande.
+_CATALOGUE_RX = re.compile(
+    r"^\s*(le\s+|ton\s+|votre\s+|vos\s+|nos\s+)?(catalogue|produits?|offres?)\s*[?!.]*\s*$|"
+    r"\b(montre|voir|affiche|envoie|donne|liste|ouvre)\b.{0,25}\b(catalogue|produits|offres)\b|"
+    r"\b(votre|ton|le)\s+catalogue\b",
+    re.I,
+)
 _CART_RX = re.compile(r"\b(panier|cart|mon panier)\b", re.I)
 _ORDER_RX = re.compile(r"\b(commander|commande|order|checkout|finaliser|je commande)\b", re.I)
 _CLEAR_RX = re.compile(r"\b(vider|clear|vide le panier)\b", re.I)

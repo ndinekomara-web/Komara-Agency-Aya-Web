@@ -120,10 +120,10 @@ def test_devis_flow_is_reachable_and_recorded():
     assert "budget" in step2["reply"].lower()
 
     step3 = client.post("/api/chat", json={"message": "150 euros", "session_id": session}).json()
-    assert "Récapitulatif" in step3["reply"]
+    assert "récapitule" in step3["reply"].lower()
 
     step4 = client.post("/api/chat", json={"message": "oui", "session_id": session}).json()
-    assert "enregistrée" in step4["reply"]
+    assert ("noté" in step4["reply"].lower()) or ("24h" in step4["reply"])
 
     quotes = client.get("/api/quotes").json()["quotes"]
     assert any(q["service"] == "Bot WhatsApp" and q["budget"] == "150 euros" for q in quotes)

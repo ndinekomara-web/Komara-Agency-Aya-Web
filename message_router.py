@@ -12,6 +12,8 @@ from sector_reply import get_sector_response
 import rag_engine
 import seed_engine
 import checkout
+import client_memory
+import conversation
 import closer_skills
 import phone_validation
 import chat_store
@@ -73,6 +75,31 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
     # 2. Détection de langue
     lang = detect_language(text, chat_id)
 
+    # 2b. Mémoire du client : on retient ce qu'il dit, on charge ce qu'on sait déjà.
+    profile = client_memory.get(str(chat_id))
+    first_message = profile.get("turns", 0) == 0
+    welcome_back = conversation.greeting_prefix(profile) if profile.get("turns", 0) > 0 else ""
+    before = dict(profile)
+    profile = client_memory.learn(str(chat_id), text, profile)
+
+    def nonlocal_welcome_off() -> None:
+        nonlocal welcome_back
+        welcome_back = ""
+
+    def reply(message: str) -> bool:
+        """Envoie la réponse et enregistre la mémoire (une seule fois par tour)."""
+        if welcome_back and not message.startswith("Content de te revoir"):
+            message = welcome_back + message
+        conversation.remember_question(profile, message)
+        client_memory.save(str(chat_id), profile)
+        bot_send_func(chat_id, message)
+        return True
+
+    # 2c. Salutation ou « comment tu vas » : on répond humainement.
+    small_talk = conversation.wellbeing_reply(text, profile, lang)
+    if small_talk:
+        return reply(small_talk)
+
     # 3. Sécurité : bloquer les tentatives d'extraction de prompts
     if is_secret_probe(text):
         bot_send_func(chat_id, GENERIC_MESSAGES[lang]["secret_blocked"])
@@ -100,8 +127,10 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
                 notify.phone_captured(str(chat_id), phone)
             except Exception:
                 pass
-            bot_send_func(chat_id, _PHONE_THANKS.get(lang, _PHONE_THANKS["fr"]))
-            return True
+            profile["phone"] = phone
+            profile["open_question"] = ""
+            client_memory.set_stage(profile, "closing")
+            return reply(conversation.phone_thanks(profile, lang) or _PHONE_THANKS.get(lang, _PHONE_THANKS["fr"]))
 
     # 4c. Commande guidée en cours (panier -> nom -> livraison -> confirmation)
     if checkout.in_checkout(chat_id):
@@ -141,6 +170,42 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
             bot_send_func(chat_id, flow_response)
             return True
 
+    # 3d-bis. Le client demande un lien ou dit ne pas l'avoir reçu : réponse honnête.
+    link_reply = conversation.reply_link_question(text, profile)
+    if link_reply:
+        return reply(link_reply)
+
+    # 3d-ter. Simple confirmation (« d'accord », « ok ») : on réagit à ce qui précède.
+    if lang == "fr" and conversation.is_confirmation(text) and profile.get("turns", 0) > 1:
+        confirmed = conversation.reply_confirmation(profile)
+        if confirmed:
+            return reply(confirmed)
+
+    # 3d-00. Le client se présente ou décrit son activité : on accueille, on avance.
+    if lang == "fr" and conversation.is_introduction(text):
+        intro_reply = conversation.reply_introduction(profile, text, before)
+        if intro_reply:
+            return reply(intro_reply)
+
+    # 3d-0. Un client connu dit bonjour : salutation personnalisée, une seule voix.
+    if lang == "fr" and conversation.is_greeting_only(text):
+        known = conversation.reply_returning_greeting(profile)
+        if known:
+            nonlocal_welcome_off()
+            return reply(known)
+
+    # 3d-pre. Le client répond à la question qu'Aya vient de poser.
+    if lang == "fr":
+        answered = conversation.reply_to_last_question(profile, text)
+        if answered:
+            return reply(answered)
+
+    # 3d-quater. Le client exprime un projet : on répond en vendeur, pas en dictionnaire.
+    if lang == "fr" and conversation.is_buy_intent(text):
+        buy_reply = conversation.reply_buy_intent(profile, text)
+        if buy_reply:
+            return reply(buy_reply)
+
     # 3e. Demande de devis explicite : parcours guidé (service, budget, confirmation)
     if is_quote_intent(text) and not get_flow_state(chat_id):
         bot_send_func(chat_id, start_devis_flow(chat_id, lang))
@@ -149,8 +214,7 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
     # 3f. Connaissances écrites par l'équipe via /admin : elles font foi
     admin_answer = seed_engine.find_admin_answer(text, lang)
     if admin_answer:
-        bot_send_func(chat_id, admin_answer)
-        return True
+        return reply(conversation.build_reply(profile, "admin:" + admin_answer[:40], "", admin_answer))
 
     # 4b. Adieux (repli si le seed n'a pas de fiche)
     if is_farewell(text, lang):
@@ -164,8 +228,13 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
     if not in_flow:
         seed_hit = seed_engine.find_answer(text, lang)
         if seed_hit:
-            bot_send_func(chat_id, seed_hit["answer"])
-            return True
+            title = seed_hit.get("question") or ""
+            topic = title or seed_hit["answer"][:40]
+            return reply(
+                conversation.build_reply(
+                    profile, topic, title, seed_hit["answer"], first_message=False
+                )
+            )
 
     # 8. Connaissances ajoutées via /admin + anciens fichiers génériques
     rag_response = get_sector_response(text, lang)

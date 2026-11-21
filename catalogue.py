@@ -14,6 +14,16 @@ import db
 
 # Catalogue officiel Komara Agency — bots et agents IA.
 OFFICIAL_SERVICES = [
+    ("Design", "Logo seul",
+     "Logo premium livré en 24h, fichiers HD + sources", 50.0),
+    ("Design", "Pack Premium (logo + identité)",
+     "Identité visuelle complète : logo, couleurs, typographies", 150.0),
+    ("Design", "Affiche / visuel",
+     "Affiche, visuel réseaux sociaux ou pub, livré en 24 à 48h", 30.0),
+    ("Site", "Site vitrine",
+     "Site vitrine professionnel livré en 7 jours", 250.0),
+    ("Design", "Retouche photo",
+     "Retouche pro de tes photos, livrée en 24 à 48h", 10.0),
     ("Bot", "Bot Scripté",
      "Bot WhatsApp/Telegram : FAQ, menu, commandes simples — prêt en 48h", 50.0),
     ("Chatbot", "Chatbot IA Vendeur",
@@ -72,11 +82,14 @@ def _schema() -> list[str]:
 def init_db() -> None:
     """Crée les tables et installe le catalogue officiel s'il est vide."""
     db.run_many(_schema())
-    rows = db.run("SELECT COUNT(*) AS n FROM products WHERE active = 1")
-    if rows and rows[0]["n"]:
-        return
     now = time.time()
+    existing = {
+        row["name"]
+        for row in (db.run("SELECT name FROM products WHERE active = 1") or [])
+    }
     for category, name, description, price in OFFICIAL_SERVICES:
+        if name in existing:
+            continue
         db.run(
             "INSERT INTO products (category, name, description, price, active, created_at)"
             " VALUES (?, ?, ?, ?, 1, ?)",

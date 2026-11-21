@@ -173,6 +173,21 @@ def _local_search(message: str) -> str | None:
         return None
     if not answer:
         return None
+    # Recoupement lexical obligatoire : « blablabla xyz » ne doit pas tomber
+    # sur une fiche au hasard.
+    source = None
+    for questions, ans in (list(aya_seed.SEED_QR) + [e for items in getattr(aya_seed, "SEED_QR_ML", {}).values() for e in items]):
+        if ans == answer:
+            source = questions
+            break
+    if source:
+        msg_words = {w for w in _words(message) if len(w) >= 3}
+        fiche_words = set()
+        for q in source:
+            fiche_words |= {w for w in _words(q) if len(w) >= 3}
+        if not (msg_words & fiche_words):
+            return None
+
     # Le service doit exister chez Komara Agency (règle du bot Telegram).
     try:
         import service_guard
@@ -215,7 +230,24 @@ def find_answer(message: str, lang: str | None = None) -> dict[str, Any] | None:
     # 2e chance : moteur tolérant (celui du bot Telegram)
     answer = _local_search(message)
     if answer:
-        return {"question": message, "answer": answer, "lang": lang or "fr", "score": 0.5, "engine": "local_search"}
+        # On retrouve la vraie fiche : son titre sert de clé de mémoire, et
+        # la question du client ne doit jamais être recopiée comme titre.
+        source = _entry_for_answer(idx, answer)
+        return {
+            "question": source["question"] if source else "",
+            "answer": answer,
+            "lang": (source or {}).get("lang") or lang or "fr",
+            "score": 0.5,
+            "engine": "local_search",
+        }
+    return None
+
+
+def _entry_for_answer(idx, answer: str) -> dict[str, Any] | None:
+    for code, items in idx.items():
+        for entry in items:
+            if entry["answer"] == answer:
+                return {**entry, "lang": code}
     return None
 
 

@@ -81,21 +81,21 @@ def detect_language_simple(text: str) -> str:
 # === Messages génériques multilingues ===
 GENERIC_MESSAGES = {
     "fr": {
-        "no_understand": "Je n'ai pas bien compris votre demande. Pouvez-vous reformuler ?",
-        "greeting": "Bonjour ! 👋 Comment puis-je vous aider aujourd'hui ?",
-        "farewell": "Merci pour votre message ! À bientôt. 👋",
-        "secret_blocked": "Je ne peux pas partager ces informations. Comment puis-je vous aider autrement ?",
+        "no_understand": "Pardon, j'ai pas bien saisi 😅 Tu peux me redire ça avec tes mots ?",
+        "greeting": "Salut 👋 Dis-moi ce que tu veux lancer, je m'occupe du reste.",
+        "farewell": "Merci à toi 🙏 À très vite, et bon business !",
+        "secret_blocked": "Ça, je ne peux pas le partager 🙏 Dis-moi plutôt ce que tu veux créer, je t'aide volontiers.",
         "ask_precision": "Pourriez-vous préciser votre question ? Je veux vous donner la meilleure réponse possible.",
     },
     "ar": {
-        "no_understand": "لم أفهم طلبك بشكل جيد. هل يمكنك إعادة الصياغة؟",
+        "no_understand": "عذراً، لم أفهم جيداً 😅 هل يمكنك قولها بطريقة أخرى؟",
         "greeting": "مرحبا! 👋 كيف يمكنني مساعدتك اليوم؟",
         "farewell": "شكرا لرسالتك! إلى اللقاء قريبا. 👋",
         "secret_blocked": "لا يمكنني مشاركة هذه المعلومات. كيف يمكنني مساعدتك بطريقة أخرى؟",
         "ask_precision": "هل يمكنك توضيح سؤالك؟ أريد أن أعطيك أفضل إجابة ممكنة.",
     },
     "en": {
-        "no_understand": "I didn't quite understand your request. Could you rephrase?",
+        "no_understand": "Sorry, I didn't quite catch that 😅 Can you say it another way?",
         "greeting": "Hello! 👋 How can I help you today?",
         "farewell": "Thanks for your message! See you soon. 👋",
         "secret_blocked": "I can't share that information. How else can I help you?",

@@ -23,8 +23,8 @@ PRICES: dict[str, str] = {
     "LOGO": os.getenv("PRICE_LOGO", "50 €"),
     "AFFICHE": os.getenv("PRICE_AFFICHE", "30 €"),
     "AFFICHE_COURT": os.getenv("PRICE_AFFICHE_COURT", "30 €"),
-    "SITE": os.getenv("PRICE_SITE", "50 €"),
-    "SITE_COURT": os.getenv("PRICE_SITE_COURT", "50 €"),
+    "SITE": os.getenv("PRICE_SITE", "250 €"),
+    "SITE_COURT": os.getenv("PRICE_SITE_COURT", "250 €"),
     "RETOUCHE": os.getenv("PRICE_RETOUCHE", "10 €"),
     "PACK_PREMIUM": os.getenv("PRICE_PACK_PREMIUM", "150€"),
 }
@@ -119,13 +119,12 @@ SEED_QR: list[tuple[list[str], str]] = [
      "Excellent, je note tout. Et tu veux que le bot fasse quoi d'autre ? "
      "Prendre les commandes ? Envoyer la localisation ? Faire des relances ?"),
     (["prix bot", "prix du bot", "combien le bot"],
-     "C'est 100 € au lieu de 200 € cette semaine. Offre spéciale. Le bot se "
-     "rentabilise en 2-3 jours car tu ne rates plus de clients la nuit. Je "
-     "te lance la commande ?"),
+     "Un bot WhatsApp vendeur, c'est 100 €, et il se rentabilise vite : tu ne "
+     "rates plus un client, même la nuit. On démarre par un devis gratuit ?"),
     (["oui lance", "oui lances", "ok lance"],
-     "Parfait ! Dernière étape : Envoie-moi : 1. Nom de ta page 2. Numéro "
-     "WhatsApp où installer le bot 3. Logo si tu as. Dès que j'ai ça, je "
-     "lance et tu paies après la démo, ok ?"),
+     "Parfait 🙌 Il me faut juste : 1. le nom de ta page 2. le numéro WhatsApp "
+     "où installer le bot 3. ton logo si tu en as un. Ensuite on valide le devis, "
+     "50% pour démarrer et 50% à la livraison. Tu me les envoies ?"),
     # BOSS 25/10 : « ok je veux commander » SEUL — les variantes
     # « je veux commander » / « ok commande » existent déjà dans le
     # Sheet du boss (fiches multi-variantes) et feraient SKIPPER toute
@@ -143,11 +142,11 @@ SEED_QR: list[tuple[list[str], str]] = [
     # reconnu, et la réponse ouvre TOUJOURS vers la suite commerciale —
     # le tunnel vente/RDV/close prend le relais dès la réponse du client.
     (["salam aya", "salam aya !!", "salam aya !"],
-     "Wa alaykoum salam ! Ça fait plaisir de te revoir 😊 Comment va ton "
-     "business ? Toujours au top ?"),
+     "Wa alaykoum salam ! Ça fait plaisir 😊 Dis-moi, c'est pour quel "
+     "projet que tu passes aujourd'hui ?"),
     (["tu me connais", "est-ce que tu me connais", "tu me connais ?"],
-     "Bien sûr que je te connais ! Tu es un de nos meilleurs clients. "
-     "Comment je peux t'aider aujourd'hui ?"),
+     "On se parle pour la première fois ici, mais je suis ravie de faire "
+     "ta connaissance 😊 Dis-moi ton prénom et ton projet ?"),
     (["ça fait longtemps", "ca fait longtemps", "ça fait longtemps !"],
      "Oui ça fait longtemps ! Tu m'as manqué. Quoi de neuf chez toi ? "
      "Toujours besoin d'un coup de main ?"),
@@ -201,7 +200,16 @@ SEED_QR: list[tuple[list[str], str]] = [
     (["services"],
 
      "Nos services 🚀\n• Bots WhatsApp & Telegram\n• Sites web vitrine & e-commerce\n• Logos & identité visuelle\n• Affiches & visuels pub\n• Gestion de RDV automatique\nTape 'prix' pour les tarifs 👇"),
-    (["prix", "c'est combien le logo", "c'est combien l'affiche", "c'est combien un site"],
+    (["c'est combien le logo", "prix logo", "combien le logo"],
+     "Un logo, c'est {LOGO}, livré en 24h, avec les fichiers HD et les sources. "
+     "Tu me donnes le nom de ton business et je te montre une première version ?".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
+    (["c'est combien l'affiche", "prix affiche", "combien une affiche"],
+     "Une affiche, c'est {AFFICHE}, livrée en 24 à 48h, prête pour Facebook, WhatsApp et l'impression. "
+     "C'est pour quel événement ?".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
+    (["c'est combien un site", "prix site", "combien un site vitrine", "prix site vitrine"],
+     "Un site vitrine, c'est {SITE}, livré en 7 jours. Il présente ton activité, tes services et tes contacts, "
+     "et il est pensé pour transformer les visiteurs en clients. On regarde ton projet ?".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
+    (["prix", "tarifs", "combien ça coûte en tout"],
      "Tarifs 🇬🇳\n• Logo seul : {LOGO} (livré en 24h)\n• Affiche/visuel : {AFFICHE}\n• Site vitrine : {SITE} (7 jours)\n• Retouche photo : {RETOUCHE}\nExpress 24h : +30%\nDis-moi ce qui t'intéresse pour commander 👇".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
     (["combien ça coûte"],
      "Ça dépend du projet 😊 Logo seul {LOGO}, affiche {AFFICHE_COURT}, site {SITE_COURT}. Dis-moi ce que tu veux exactement et je te donne le prix précis.".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),

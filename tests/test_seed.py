@@ -48,7 +48,10 @@ def test_objection_and_intent():
 
 
 def test_unknown_still_polite():
-    assert "reformuler" in ask("blablabla xyz qsdf")["reply"].lower()
+    """Le charabia reçoit une réponse humaine, pas une fiche au hasard."""
+    reply = ask("blablabla xyz qsdf", session="unknown-fresh")["reply"].lower()
+    assert "saisi" in reply or "redire" in reply
+    assert "50" not in reply
 
 
 def test_prices_can_be_changed_by_env(monkeypatch):
@@ -61,3 +64,29 @@ def test_prices_can_be_changed_by_env(monkeypatch):
     monkeypatch.delenv("PRICE_LOGO")
     importlib.reload(aya_seed)
     seed_engine.reload()
+
+
+def test_official_prices_everywhere():
+    """Les prix du site officiel, partout, et un prix par service."""
+    grid = ask("tarifs", session="p-grid")["reply"]
+    assert "250" in grid and "Site vitrine" in grid
+
+    site = ask("combien coûte un site vitrine", session="p-site")["reply"]
+    assert "250" in site and "Logo seul" not in site
+
+    logo = ask("prix d'un logo", session="p-logo")["reply"]
+    assert "50" in logo and "250" not in logo
+
+
+def test_no_invented_discount():
+    """Aucune fausse promo : le bot ne s'invente pas de prix barrés."""
+    reply = ask("prix du bot", session="p-bot")["reply"].lower()
+    assert "au lieu de" not in reply and "200" not in reply
+
+
+def test_greeting_variants_are_understood():
+    """« Comment tu vas » et « Tu va bien » ne tombent plus sur une fiche tarif."""
+    for text in ("Comment tu vas", "Tu va bien"):
+        reply = ask(text, session="p-how-" + text)["reply"].lower()
+        assert "tarif" not in reply and "devis" not in reply
+        assert "merci" in reply

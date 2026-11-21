@@ -42,7 +42,7 @@ def start_devis_flow(chat_id: int, lang: str) -> str:
     set_flow_state(chat_id, "devis_services", {})
 
     messages = {
-        "fr": "Parfait ! Pour vous préparer un devis, quel service vous intéresse ?\n\n1️⃣ Bot WhatsApp\n2️⃣ Bot Telegram ou chatbot IA\n3️⃣ Design graphique\n4️⃣ Accompagnement digital\n\nRépondez avec le numéro.",
+        "fr": "Avec plaisir 🙌 On part sur quoi ? Dis-moi le numéro 👇\n\n1️⃣ Bot WhatsApp\n2️⃣ Bot Telegram ou chatbot IA\n3️⃣ Design graphique\n4️⃣ Accompagnement digital",
         "ar": "ممتاز! لتحضير عرض سعر، ما هي الخدمة التي تهمك؟\n\n1️⃣ بوت واتساب\n2️⃣ بوت تلغرام أو روبوت محادثة\n3️⃣ تصميم غرافيك\n4️⃣ مواكبة رقمية\n\nأجب بالرقم.",
         "en": "Great! To prepare a quote, which service interests you?\n\n1️⃣ WhatsApp bot\n2️⃣ Telegram bot or AI chatbot\n3️⃣ Graphic design\n4️⃣ Digital support\n\nReply with the number.",
     }
@@ -78,7 +78,7 @@ def process_devis_step(chat_id: int, user_text: str, lang: str) -> str | None:
         set_flow_state(chat_id, "devis_budget", flow["data"])
 
         messages = {
-            "fr": f"Vous avez choisi : {services[num]}. Quel est votre budget approximatif ?",
+            "fr": f"Nickel, {services[num]} 👍 Tu as un budget en tête, même large ?",
             "ar": f"لقد اخترت: {services[num]}. ما هي ميزانيتك التقريبية؟",
             "en": f"You chose: {services[num]}. What is your approximate budget?",
         }
@@ -90,7 +90,7 @@ def process_devis_step(chat_id: int, user_text: str, lang: str) -> str | None:
         set_flow_state(chat_id, "devis_confirm", flow["data"])
 
         messages = {
-            "fr": f"Récapitulatif :\n• Service : {flow['data'].get('service', 'N/A')}\n• Budget : {user_text}\n\nConfirmez-vous cette demande ? (Oui/Non)",
+            "fr": f"Je récapitule 👇\n• Service : {flow['data'].get('service', 'N/A')}\n• Budget : {user_text}\n\nJe valide et je lance ? (oui / non)",
             "ar": f"ملخص:\n• الخدمة: {flow['data'].get('service', 'N/A')}\n• الميزانية: {user_text}\n\nهل تؤكد هذا الطلب؟ (نعم/لا)",
             "en": f"Summary:\n• Service: {flow['data'].get('service', 'N/A')}\n• Budget: {user_text}\n\nDo you confirm this request? (Yes/No)",
         }
@@ -128,7 +128,7 @@ def process_devis_step(chat_id: int, user_text: str, lang: str) -> str | None:
             clear_flow_state(chat_id)
             clear_pending(chat_id)
             messages = {
-                "fr": "✅ Votre demande de devis a été enregistrée ! Nous vous contacterons dans les 24h.",
+                "fr": "C'est noté 🙌 Je transmets à l'équipe, elle te rappelle dans les 24h sur WhatsApp.",
                 "ar": "✅ تم تسجيل طلب عرض السعر الخاص بك! سنتواصل معك خلال 24 ساعة.",
                 "en": "✅ Your quote request has been recorded! We will contact you within 24h.",
             }
@@ -137,7 +137,7 @@ def process_devis_step(chat_id: int, user_text: str, lang: str) -> str | None:
             clear_flow_state(chat_id)
             clear_pending(chat_id)
             messages = {
-                "fr": "Pas de problème. N'hésitez pas si vous changez d'avis !",
+                "fr": "Pas de souci 👍 Si tu changes d'avis, je suis là.",
                 "ar": "لا مشكلة. لا تتردد إذا غيرت رأيك!",
                 "en": "No problem. Don't hesitate if you change your mind!",
             }
