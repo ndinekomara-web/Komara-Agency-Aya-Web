@@ -18,7 +18,7 @@ logger = logging.getLogger("komara.aya_seed")
 
 # ── CONFIG MÉTIER (Boss 10/10) : prix et contact pilotables par variable
 # d'environnement — plus besoin de redéployer pour changer un tarif.
-CONTACT_WA_PHONE = os.getenv("KOMARA_WHATSAPP", "+212 701 986 219")
+CONTACT_WA_PHONE = os.getenv("KOMARA_WHATSAPP", "").strip()
 PRICES: dict[str, str] = {
     "LOGO": os.getenv("PRICE_LOGO", "50 €"),
     "AFFICHE": os.getenv("PRICE_AFFICHE", "30 €"),
@@ -303,13 +303,13 @@ SEED_QR: list[tuple[list[str], str]] = [
 SEED_QR_ML: dict[str, list[tuple[list[str], str]]] = {
     "en": [
         (["how much does a website cost", "website cost", "website price", "how much for a website", "price of a website", "cost for a website", "what does a website cost", "how much is a website"],
-         "Let me be straight with you 💰\n\nAt KOMARA AGENCY 🇬🇳 we don't sell fixed prices, we sell RESULTS.\n\n👉 It depends on what you need:\n1️⃣ BOT / AI AGENT: from 50 € - it replaces 2 employees 24/7\n2️⃣ WEBSITE that sells: from 50 €\n3️⃣ PREMIUM LOGO + Brand kit: from 50 €\n4🏵️ FULL PACK (Bot + Website + Logo) = DEAL 🚀\n\nIt's not an expense, it's a machine that pays you back. One client and it's already profitable.\n\nType 'DEVIS' now and get your free quote in 2 minutes with N-Dine on WhatsApp: +212 701 986 219\nJust tell me: BOT, WEBSITE or LOGO ?"),
+         "Let me be straight with you 💰\n\nAt KOMARA AGENCY 🇬🇳 we don't sell fixed prices, we sell RESULTS.\n\n👉 It depends on what you need:\n1️⃣ BOT / AI AGENT: from 50 € - it replaces 2 employees 24/7\n2️⃣ WEBSITE that sells: from 50 €\n3️⃣ PREMIUM LOGO + Brand kit: from 50 €\n4🏵️ FULL PACK (Bot + Website + Logo) = DEAL 🚀\n\nIt's not an expense, it's a machine that pays you back. One client and it's already profitable.\n\nType 'DEVIS' now and get your free quote in 2 minutes with N-Dine on WhatsApp\nJust tell me: BOT, WEBSITE or LOGO ?"),
         (["what services do you offer", "your services", "services", "what do you do", "what do you offer", "what are your services"],
          "I'm AYA 🤖 the all-in-one assistant of KOMARA AGENCY 🇬🇳 Here's what we do for you:\n\n🚀 1. AUTOMATION & AI AGENTS\n> I build your AI employee that answers, sells and handles support on WhatsApp & Telegram 24/7. You sleep, she sells.\n\n💻 2. WEB DESIGN THAT SELLS\n> No dead websites. We build sites that turn visitors into paying clients.\n\n🎨 3. PREMIUM DESIGN & LOGO\n> Logo, brand kit, visuals that make your brand stand out.\n\n🎬 4. AI VIDEO & CONTENT\n> Ads, Reels, pro videos generated with AI.\n\nIn short: we turn your business into an automatic sales machine.\n\nType:\n1🏵️ for BOT / AI AGENT\n2🏵️ for WEBSITE\n3🏵️ for LOGO / VISUAL\n4🏵️ for a full QUOTE"),
     ],
     "es": [
         (["cuanto cuesta un sitio web", "precio sitio web", "precio de un sitio web", "cuanto cuesta una pagina web", "precio pagina web"],
-         "Te lo digo claro 💰\n\nEn KOMARA AGENCY 🇬🇳 no vendemos precios fijos, vendemos RESULTADOS.\n\n👉 Depende de lo que necesitas:\n1️⃣ BOT / AGENTE IA: desde 50 € - reemplaza 2 empleados 24/7\n2️⃣ SITIO WEB que vende: desde 50 €\n3️⃣ LOGO PREMIUM + identidad: desde 50 €\n4🏵️ PACK COMPLETO (Bot + Sitio + Logo) = OFERTA 🚀\n\nNo es un gasto, es una máquina que te lo devuelve. Un solo cliente y ya está pagado.\n\nEscribe 'DEVIS' ahora y recibe tu presupuesto gratis en 2 minutos con N-Dine en WhatsApp: +212 701 986 219\nDime solo: BOT, SITIO o LOGO ?"),
+         "Te lo digo claro 💰\n\nEn KOMARA AGENCY 🇬🇳 no vendemos precios fijos, vendemos RESULTADOS.\n\n👉 Depende de lo que necesitas:\n1️⃣ BOT / AGENTE IA: desde 50 € - reemplaza 2 empleados 24/7\n2️⃣ SITIO WEB que vende: desde 50 €\n3️⃣ LOGO PREMIUM + identidad: desde 50 €\n4🏵️ PACK COMPLETO (Bot + Sitio + Logo) = OFERTA 🚀\n\nNo es un gasto, es una máquina que te lo devuelve. Un solo cliente y ya está pagado.\n\nEscribe 'DEVIS' ahora y recibe tu presupuesto gratis en 2 minutos con N-Dine en WhatsApp\nDime solo: BOT, SITIO o LOGO ?"),
         (["que servicios ofrecen", "sus servicios", "servicios", "que hacen", "que ofrecen", "cuales son sus servicios"],
          "Soy AYA 🤖 la asistente todoterreno de KOMARA AGENCY 🇬🇳 Esto es lo que hacemos por ti:\n\n🚀 1. AUTOMATIZACIÓN Y AGENTES IA\n> Creo tu empleada IA que responde, vende y atiende en WhatsApp y Telegram 24/7. Tú duermes, ella vende.\n\n💻 2. DISEÑO WEB QUE VENDE\n> Nada de sitios muertos. Creamos sitios que convierten visitantes en clientes.\n\n🎨 3. DISEÑO Y LOGO PREMIUM\n> Logo, identidad y visuales que imponen tu marca.\n\n🎬 4. VIDEO Y CONTENIDO CON IA\n> Anuncios, Reels y vídeos profesionales generados con IA.\n\nEn resumen: convertimos tu negocio en una máquina de ventas automática.\n\nEscribe:\n1🏵️ para BOT / AGENTE IA\n2🏵️ para SITIO WEB\n3🏵️ para LOGO / VISUAL\n4🏵️ para un PRESUPUESTO completo"),
     ],

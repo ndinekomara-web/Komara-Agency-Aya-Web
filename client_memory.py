@@ -57,6 +57,8 @@ _SECTORS = {
     "transport": ("transport", "taxi", "livraison", "logistique"),
 }
 # Présentation explicite : seule source fiable d'un prénom.
+_PHONE_RX = re.compile(r"(?:\+?\d[\d .-]{7,}\d)")
+
 _NAME_RX = re.compile(
     r"\b(?:je m'appelle|je me nomme|moi c'est|mon nom est|mon prénom est|je suis)\s+"
     r"([A-ZÀ-Ÿa-zà-ÿ][\wÀ-ÿ'-]{1,20})",
@@ -167,6 +169,33 @@ def forget(session_id: str) -> None:
     db.run("DELETE FROM client_facts WHERE session_id = ?", (session_id,))
 
 
+def find_by_phone(phone: str, exclude_session: str = "") -> tuple[str, dict[str, Any]] | None:
+    """Retrouve un client par le numéro qu'il a donné dans la conversation.
+
+    C'est la conversation qui identifie le client, jamais l'IP : un client qui
+    revient sur un autre téléphone ou après une réinstallation est reconnu
+    parce qu'il a redonné son numéro.
+    """
+    digits = "".join(ch for ch in str(phone) if ch.isdigit())
+    if len(digits) < 8:
+        return None
+    _init()
+    rows = db.run("SELECT session_id, data FROM client_profiles") or []
+    for row in rows:
+        if row["session_id"] == exclude_session:
+            continue
+        try:
+            data = json.loads(row["data"])
+        except (ValueError, TypeError):
+            continue
+        known = "".join(ch for ch in str(data.get("phone", "")) if ch.isdigit())
+        if known and known == digits:
+            merged = _blank()
+            merged.update(data)
+            return row["session_id"], merged
+    return None
+
+
 def all_profiles(limit: int = 100) -> list[dict[str, Any]]:
     """Pour /admin : qui sont les clients, où en sont-ils."""
     _init()
@@ -238,6 +267,21 @@ def learn(session_id: str, text: str, profile: dict[str, Any] | None = None) -> 
 
     if any(w in low for w in ("trop cher", "pas les moyens", "pas d'argent", "cher ")):
         profile["objections"] = int(profile.get("objections", 0)) + 1
+
+    # Téléphone laissé dans la conversation : c'est ce qui identifie le client
+    # (jamais l'IP). S'il revient sur un autre appareil, on le reconnaît.
+    new_phone = _PHONE_RX.search(text)
+    if new_phone:
+        digits = "".join(ch for ch in new_phone.group(0) if ch.isdigit())
+        if 8 <= len(digits) <= 15:
+            previous = find_by_phone(digits, exclude_session=session_id)
+            if previous:
+                _, old = previous
+                for field in ("name", "service", "sector", "channel", "stage", "budget"):
+                    if not profile.get(field) and old.get(field):
+                        profile[field] = old[field]
+                profile["returning"] = True
+            profile["phone"] = digits
 
     return profile
 

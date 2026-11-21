@@ -36,7 +36,7 @@ Ouvrez ensuite `http://localhost:8000`.
 L'application est une PWA : elle s'installe depuis le navigateur, sans store.
 
 1. Mettez Aya en ligne, ou lancez-la sur un ordinateur du même réseau.
-2. Ouvrez l'adresse dans le navigateur du téléphone : `http://IP-DU-PC:8000`.
+2. Ouvrez l'adresse affichée dans le navigateur du téléphone.
 3. **Android / Chrome** : menu ⋮ → « Installer l'application ».
 4. **iPhone / Safari** : bouton Partager → « Sur l'écran d'accueil ».
 5. **Ordinateur / Chrome ou Edge** : icône d'installation dans la barre d'adresse.
@@ -72,18 +72,11 @@ de santé (`/api/health`).
    > `Invalid value for '--port'`.
 2. **Settings → Networking → Generate Domain** : vous obtenez une adresse HTTPS.
    C'est celle que le téléphone ouvrira.
-3. **Variables** (Settings → Variables) :
-
-   | Variable | Valeur conseillée |
-   | --- | --- |
-   | `APP_ACCESS_TOKEN` | un mot de passe de votre choix (protège la conversation) |
-   | `RAG_BACKEND` | `keyword` (léger) ou `embed` (plus fin, plus lourd) |
-   | `DEFAULT_LANGUAGE` | `fr` |
-
-   `PORT` est fourni automatiquement par Railway : ne le définissez pas.
+3. **Réglages** : les options se règlent dans les variables d'environnement
+   de la plateforme d'hébergement. Elles ne sont volontairement pas listées ici.
 4. **PostgreSQL** (recommandé) : *New → Database → Add PostgreSQL* dans le
-   même projet. Railway crée la variable `DATABASE_URL`, et Aya s'y connecte
-   toute seule : l'historique survit aux redéploiements.
+   même projet. La connexion est fournie par la plateforme : l'historique
+   survit aux redéploiements.
 5. Déployez, puis ouvrez l'adresse HTTPS sur le téléphone et installez
    l'application.
 
@@ -95,8 +88,8 @@ le fichier est perdu à chaque déploiement.
 
 | Situation | Base utilisée |
 | --- | --- |
-| `DATABASE_URL` défini (Railway, Render, Supabase…) | PostgreSQL |
-| `DATABASE_URL` vide (local, VPS) | SQLite dans `MEMORY_DIR` |
+| Base PostgreSQL fournie par l'hébergement | PostgreSQL |
+| Aucune base configurée (local, VPS) | SQLite dans le dossier de données |
 
 Le schéma est créé automatiquement au démarrage (`sessions`, `messages`).
 La connexion PostgreSQL réessaie plusieurs fois si la base démarre après
@@ -110,24 +103,9 @@ curl https://votre-domaine/api/health
 
 ## Configuration
 
-Toutes les options passent par des variables d'environnement (voir `.env.example`).
-
-| Variable | Rôle | Défaut |
-| --- | --- | --- |
-| `PORT` | Port d'écoute | `8000` |
-| `DEFAULT_LANGUAGE` | Langue de départ | `fr` |
-| `APP_ACCESS_TOKEN` | Mot de passe protégeant la conversation | vide (public) |
-| `RESPONSE_DELAY_MIN` | Attente minimale avant réponse (secondes) | `3` |
-| `RESPONSE_DELAY_MAX` | Attente maximale avant réponse (secondes) | `8` |
-| `ALERT_WEBHOOK_URL` | Webhook JSON pour être prévenu (Make, Zapier, n8n → WhatsApp) | vide |
-| `ALERT_EMAIL_TO` + `SMTP_HOST` | E-mail d'alerte (facultatif) | vide |
-| `DEPOSIT_LINK` | Lien de paiement de l'acompte, ajouté au devis et à la facture | vide |
-| `RATE_LIMIT_PER_MINUTE` | Messages maximum par minute et par session | `15` |
-| `ADMIN_ID` | IP(s) autorisées pour `/admin`, séparées par des virgules | vide (désactivé) |
-| `RAG_BACKEND` | `auto`, `keyword` ou `embed` | `auto` |
-| `DATABASE_URL` | Connexion PostgreSQL (sinon SQLite) | vide |
-| `MEMORY_DIR` | Dossier de la base SQLite | `./data` |
-| `GOOGLE_SHEETS_ID` | Journal Sheets (facultatif) | vide |
+Les options se règlent uniquement par variables d'environnement, côté
+hébergement. Ce dépôt ne documente ni leurs noms ni leurs valeurs : il reste
+lisible publiquement sans rien exposer.
 
 ### Deux moteurs de recherche
 
@@ -166,11 +144,10 @@ Le détail des routes est dans `/docs` (FastAPI) une fois le service lancé.
   bot/robot/chatbot, bonus de phrase exacte). Score dans [0, 1].
 - Si `sentence_transformers` est installé, le cross-encoder ms-marco prend le
   relais automatiquement (meilleur, mais ~2 Go : inutile sur Railway).
-- En dessous du seuil (`RERANK_THRESHOLD`, 0.32 par défaut en lexical), Aya ne
+- En dessous du seuil de pertinence, Aya ne
   répond pas une fiche au hasard : elle demande de reformuler.
 
-Variables : `RERANK_ENGINE` (auto | lexical | cross), `RERANK_THRESHOLD`,
-`RERANK_TOP_K`, `RERANK_ENABLED`.
+Le moteur et le seuil se règlent côté hébergement.
 
 ## Prix officiels
 
@@ -201,30 +178,21 @@ enregistrée, une alerte est créée et le panier est vidé.
 Les questions de prix (« tarifs », « prix ») restent servies par le seed :
 c'est la grille design, distincte du catalogue.
 
-## Administration par IP (`/admin`)
+## Administration (`/admin`)
 
-Une page d'administration permet d'ajouter des connaissances sans toucher au
-code. Elle est réservée aux adresses IP listées dans `ADMIN_ID`.
-
-1. Définissez `ADMIN_ID` dans Railway (ex. `ADMIN_ID=41.140.12.34`).
-2. Ouvrez `/admin` depuis cette adresse.
-3. Saisissez la langue, le sujet et l'information, puis *Enregistrer*.
-   Aya l'utilise immédiatement.
+Une page d'administration permet d'ajouter des connaissances, de suivre les
+devis et les commandes, sans toucher au code. L'accès est restreint côté
+serveur (adresse autorisée configurée dans l'hébergement).
 
 Les informations sont stockées en base (`knowledge_entries`), donc elles
-survivent aux redéploiements. Si l'IP n'est pas autorisée, la page affiche
-l'IP détectée : il suffit de la recopier dans `ADMIN_ID`.
-
-> L'IP d'un téléphone mobile change (4G, Wi-Fi, opérateur). En cas de refus,
-> rouvrez `/admin` pour lire la nouvelle IP et mettez-la à jour.
+survivent aux redéploiements.
 
 ## Modifier les réponses d'Aya
 
 Tout se joue dans `aya_seed.py` : une fiche est `(["question 1", "question 2"], "réponse")`.
 
-- *Prix et contact* : variables d'environnement `PRICE_LOGO`, `PRICE_AFFICHE`,
-  `PRICE_SITE`, `PRICE_RETOUCHE`, `PRICE_PACK_PREMIUM`, `KOMARA_WHATSAPP`.
-  Pas besoin de toucher au code.
+- *Prix et contact* : réglés côté hébergement, sans toucher au code. Aucun
+  tarif ni numéro n'est écrit dans ce dépôt.
 - *Ajouter une réponse sans redéployer* : page `/admin` (stockée en base).
 - *Portfolio* : déposez une image dans `web/static/portfolio/`, légende dans `captions.json`.
 

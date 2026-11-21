@@ -261,6 +261,27 @@
   });
 
 
+  async function loadClients() {
+    const list = $("clients");
+    if (!list) return;
+    try {
+      const data = await api("/api/admin/clients");
+      const clients = data.clients || [];
+      list.innerHTML = "";
+      if (!clients.length) {
+        list.innerHTML = "<li class='muted'>Aucun client pour le moment.</li>";
+        return;
+      }
+      for (const c of clients) {
+        const li = document.createElement("li");
+        li.textContent = `${c.name} — ${c.service} (${c.stage}) · ${c.turns} message(s)`;
+        list.appendChild(li);
+      }
+    } catch (error) {
+      list.innerHTML = "<li class='muted'>Indisponible.</li>";
+    }
+  }
+
   async function loadOrders() {
     const list = $("orders");
     if (!list) return;
@@ -360,6 +381,7 @@
   loadQuotes();
   loadLeads();
   loadUploads();
+  loadClients();
   loadOrders();
   loadProducts();
 })();

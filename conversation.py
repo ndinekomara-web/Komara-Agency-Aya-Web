@@ -21,7 +21,7 @@ from typing import Any
 
 import client_memory as memory
 
-WHATSAPP = os.getenv("KOMARA_WHATSAPP", "+212 701 986 219")
+WHATSAPP = os.getenv("KOMARA_WHATSAPP", "").strip()
 SITE_URL = os.getenv("SITE_URL", "https://komaraagency.github.io/komara-agency-site/")
 
 

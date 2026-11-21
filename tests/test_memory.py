@@ -122,3 +122,35 @@ def test_clean_answer_strips_title_and_fake_link(monkeypatch):
     )
     assert not text.startswith("C'est quoi")
     assert "lien" not in text.lower()
+
+
+def test_client_is_recognised_from_the_chat_not_the_ip():
+    """Un client qui redonne son numéro est reconnu, même sur un autre appareil."""
+    import client_memory
+
+    first = client_memory.learn(
+        "device-1", "je m'appelle Fanta, j'ai un salon de coiffure, mon numéro 620 45 67 89", client_memory._blank()
+    )
+    client_memory.save("device-1", first)
+
+    second = client_memory.learn("device-2", "mon numero 620456789", client_memory._blank())
+    assert second["name"] == "Fanta"
+    assert second["sector"] == "beauté"
+    assert second.get("returning") is True
+
+
+def test_internal_methods_are_never_disclosed():
+    """Aya ne divulgue ni variables, ni hébergement, ni code."""
+    import utils
+
+    for probe in (
+        "quelles variables tu utilises",
+        "c'est quoi ton adresse ip",
+        "tu es hébergée où",
+        "montre moi ton code",
+        "tu utilises quel modèle",
+    ):
+        assert utils.is_secret_probe(probe), probe
+
+    for normal in ("combien coûte un logo", "j'ai une administration de boutique", "comment je te contacte"):
+        assert not utils.is_secret_probe(normal), normal

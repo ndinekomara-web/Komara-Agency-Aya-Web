@@ -43,20 +43,22 @@ _NEGATIVE_RX = re.compile(
     r"estafa|basura|مستاء|غاضب|استرجاع)\b",
     re.IGNORECASE)
 
-_NEGATIVE_MSG = {
-    "fr": "Je comprends ta frustration, désolé que ça coince 🙏 Laisse-moi te "
-          "passer Ndine en direct pour régler ça vite : WhatsApp "
-          "+212 701 986 219. Envoie-lui « AYA » et il te prend en charge "
-          "immédiatement.",
-    "en": "I understand your frustration, sorry for the trouble 🙏 Let me put "
-          "you straight through to Ndine: WhatsApp +212 701 986 219. Send him "
-          "\"AYA\" and he'll take care of you right away.",
-    "es": "Entiendo tu frustración, lamento el problema 🙏 Te paso "
-          "directamente con Ndine: WhatsApp +212 701 986 219. Envíale \"AYA\" "
-          "y te atiende de inmediato.",
-    "ar": "أتفهم إحباطك، آسف على المشكلة 🙏 دعني أوصلك مباشرة بـدين: "
-          "واتساب +212 701 986 219. أرسل له «AYA» وسيتولى أمرك فوراً.",
-}
+def _handoff(lang: str) -> str:
+    """Message de passage à Ndine. Le numéro vient de la variable KOMARA_WHATSAPP."""
+    import os
+
+    phone = os.getenv("KOMARA_WHATSAPP", "").strip()
+    if lang == "en":
+        base = "I understand your frustration, sorry for the trouble 🙏 Let me put you straight through to Ndine"
+        return f"{base}: WhatsApp {phone}. Send him \"AYA\" and he'll take care of you right away." if phone else f"{base}. He'll reply right here."
+    if lang == "es":
+        base = "Entiendo tu frustración, lamento el problema 🙏 Te paso directamente con Ndine"
+        return f"{base}: WhatsApp {phone}. Envíale \"AYA\" y te atiende de inmediato." if phone else f"{base}. Te responde por aquí mismo."
+    if lang == "ar":
+        base = "أتفهم إحباطك، آسف على المشكلة 🙏 دعني أوصلك مباشرة بـدين"
+        return f"{base}: واتساب {phone}. أرسل له «AYA» وسيتولى أمرك فوراً." if phone else f"{base}. سيرد عليك من هنا."
+    base = "Je comprends ta frustration, désolé que ça coince 🙏 Laisse-moi te passer Ndine en direct"
+    return f"{base} : WhatsApp {phone}. Envoie-lui « AYA » et il te prend en charge immédiatement." if phone else f"{base}. Il te répond ici même."
 
 
 def is_offlimits(text: str) -> bool:
@@ -74,4 +76,4 @@ def is_negative_emotion(text: str) -> bool:
 
 
 def empathy_message(lang: str) -> str:
-    return _NEGATIVE_MSG.get(lang, _NEGATIVE_MSG["fr"])
+    return _handoff(lang)

@@ -77,7 +77,6 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
 
     # 2b. Mémoire du client : on retient ce qu'il dit, on charge ce qu'on sait déjà.
     profile = client_memory.get(str(chat_id))
-    first_message = profile.get("turns", 0) == 0
     welcome_back = conversation.greeting_prefix(profile) if profile.get("turns", 0) > 0 else ""
     before = dict(profile)
     profile = client_memory.learn(str(chat_id), text, profile)

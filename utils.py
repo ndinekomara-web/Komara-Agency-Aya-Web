@@ -49,7 +49,24 @@ def is_secret_probe(text: str) -> bool:
         "codesource", "code_source", "prompt system", "promptsystem",
         "prompt système", "instruct", "systemprompt", "system_prompt",
         "developer mode", "jailbreak", "dan mode",
-        "ton code", "github", "railway",
+        "ton code", "github", "railway", "depot", "dépôt", "repository",
+        # Configuration et infrastructure : jamais divulguées au client.
+        "variable", "variables d'environnement", "variables environnement",
+        "environment variable", "env var", "mot de passe", "password",
+        "token", "clé api", "cle api", "api key", "secret",
+        "adresse ip", "ton ip", "mon ip", "quelle ip",
+        "base de données", "base de donnees", "database", "postgres", "sqlite",
+        "serveur", "hébergement", "hebergement", "hébergeur", "hebergeur",
+        "hébergée", "hebergee", "hébergé", "heberge",
+        # « admin » seul est trop large (un client peut gérer sa boutique) :
+        # on cible l'espace interne.
+        "page admin", "/admin", "espace admin", "panneau admin",
+        "interface admin", "admin du site", "tableau de bord interne",
+        # Fonctionnement interne : on explique le service, pas la mécanique.
+        "prompt", "system prompt", "quel modèle", "quel modele", "quel llm",
+        "gpt", "openai", "anthropic", "claude", "llm", "reranker", "embedding",
+        "mémoire interne", "memoire interne", "tu stockes", "où sont stockées",
+        "ou sont stockees", "tes fichiers", "ta configuration",
     ]
 
     for pattern in secret_patterns:
@@ -84,7 +101,8 @@ GENERIC_MESSAGES = {
         "no_understand": "Pardon, j'ai pas bien saisi 😅 Tu peux me redire ça avec tes mots ?",
         "greeting": "Salut 👋 Dis-moi ce que tu veux lancer, je m'occupe du reste.",
         "farewell": "Merci à toi 🙏 À très vite, et bon business !",
-        "secret_blocked": "Ça, je ne peux pas le partager 🙏 Dis-moi plutôt ce que tu veux créer, je t'aide volontiers.",
+        "secret_blocked": "Ça reste interne à Komara Agency 🙏 Je ne partage pas ces détails. "
+                          "Par contre, sur ton projet je peux tout te dire : dis-moi ce que tu veux lancer ?",
         "ask_precision": "Pourriez-vous préciser votre question ? Je veux vous donner la meilleure réponse possible.",
     },
     "ar": {
