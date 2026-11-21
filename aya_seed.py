@@ -232,7 +232,17 @@ SEED_QR: list[tuple[list[str], str]] = [
     (["réduction"],
      "On a parfois des promos 🎉 Demande-moi 'promo' et je te dis ce qui est actif. Et pour les gros projets, on discute toujours du prix."),
     (["merci"],
-     "Avec plaisir 🙏 C'est notre travail de t'aider à grandir. Tu as un projet en tête ?"),
+     "Avec plaisir 🙏 C'est mon boulot de t'aider à grandir. Tu as un projet en tête ?"),
+    (["vous faites des vidéos", "vous faites des videos", "faire une vidéo", "video ia",
+      "vous faites des reels", "pub vidéo"],
+     "Oui, on fait des vidéos et des Reels avec l'IA : pubs, présentations, contenus à publier. "
+     "Le prix dépend de la durée et du style, donc je te fais un devis gratuit. "
+     "C'est pour quel produit ou quel service ?"),
+    (["modération de page", "moderation de page", "gérer ma page", "gerer ma page",
+      "vous modérez les pages"],
+     "Oui, on modère les pages : on filtre les commentaires, on traite les messages et on "
+     "t'envoie les vrais clients directement sur ton WhatsApp. Ça se chiffre selon le volume. "
+     "Ta page fait combien d'abonnés environ ?"),
     (["parler à un humain"],
      "Pas de souci 🙋 Écris-nous directement et l'équipe te répond vite. Direct : {CONTACT_WA_PHONE}".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
     (["au revoir"],

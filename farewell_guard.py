@@ -33,8 +33,8 @@ def is_farewell(text: str, lang: str = "fr") -> bool:
 def get_farewell_response(lang: str = "fr") -> str:
     """Retourne une réponse d'adieu appropriée."""
     responses = {
-        "fr": "Merci à vous ! N'hésitez pas à revenir si vous avez d'autres questions. À bientôt ! 👋",
+        "fr": "Avec plaisir 🙏 Reviens quand tu veux, et bon business !",
         "ar": "شكرا لك! لا تتردد في العودة إذا كان لديك أسئلة أخرى. إلى اللقاء! 👋",
-        "en": "Thank you! Don't hesitate to come back if you have more questions. See you soon! 👋",
+        "en": "Anytime 🙏 Come back whenever you like, and good business!",
     }
     return responses.get(lang, responses["fr"])

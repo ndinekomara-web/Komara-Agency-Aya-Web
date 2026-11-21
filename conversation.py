@@ -729,6 +729,9 @@ _WELLBEING_RX = re.compile(
 def wellbeing_reply(text: str, profile: dict, lang: str = "fr") -> str | None:
     """Répond à « comment tu vas » / « tu vas bien » sans sortir une fiche tarif."""
     low = (text or "").casefold().strip()
+    # Langage SMS courant : « slt cv », « bjr sa va »
+    for sms, full in (("slt", "salut"), ("cv", "ca va"), ("bjr", "bonjour"), ("bsr", "bonsoir"), ("sa va", "ca va")):
+        low = low.replace(sms, full)
     if not low or len(low.split()) > 9:
         return None
     if not _WELLBEING_RX.search(low):

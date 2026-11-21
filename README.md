@@ -157,6 +157,21 @@ Messagerie, réponses du seed, moteur tolérant aux fautes, parcours de devis,
 photos reçues, alertes, facture PDF, statistiques, exports, anti-spam.
 Le détail des routes est dans `/docs` (FastAPI) une fois le service lancé.
 
+## Reranker (pertinence des réponses)
+
+`reranker.py` relit chaque réponse candidate avant de l'envoyer.
+
+- Moteur par défaut : **lexical pondéré**, sans aucune dépendance (IDF sur les
+  questions du seed, trigrammes pour les fautes et le langage SMS, synonymes
+  bot/robot/chatbot, bonus de phrase exacte). Score dans [0, 1].
+- Si `sentence_transformers` est installé, le cross-encoder ms-marco prend le
+  relais automatiquement (meilleur, mais ~2 Go : inutile sur Railway).
+- En dessous du seuil (`RERANK_THRESHOLD`, 0.32 par défaut en lexical), Aya ne
+  répond pas une fiche au hasard : elle demande de reformuler.
+
+Variables : `RERANK_ENGINE` (auto | lexical | cross), `RERANK_THRESHOLD`,
+`RERANK_TOP_K`, `RERANK_ENABLED`.
+
 ## Prix officiels
 
 Les prix suivent la grille du site officiel (komaraagency.github.io/komara-agency-site) :
