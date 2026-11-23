@@ -29,6 +29,14 @@ PRICES: dict[str, str] = {
     "PACK_PREMIUM": os.getenv("PRICE_PACK_PREMIUM", "150€"),
 }
 
+# Contact affiché aux clients : vient de la variable KOMARA_WHATSAPP.
+# Si elle est vide, on n'invente pas un numéro : on renvoie vers la conversation.
+CONTACT_LINE = (
+    f"WhatsApp direct : {CONTACT_WA_PHONE}. Envoie « AYA » et l'équipe te prend en charge."
+    if CONTACT_WA_PHONE
+    else "Écris-moi ici, l'équipe te répond dans la journée."
+)
+
 from typing import TypedDict
 
 
@@ -252,6 +260,13 @@ SEED_QR: list[tuple[list[str], str]] = [
      "Oui, on modère les pages : on filtre les commentaires, on traite les messages et on "
      "t'envoie les vrais clients directement sur ton WhatsApp. Ça se chiffre selon le volume. "
      "Ta page fait combien d'abonnés environ ?"),
+    (["votre numero", "votre numéro", "ton numero", "ton numéro", "le numero", "le numéro",
+      "numero", "numéro", "num", "votre contact", "ton contact", "contact whatsapp",
+      "votre whatsapp", "ton whatsapp", "numero whatsapp", "numéro whatsapp",
+      "comment te joindre", "comment vous joindre", "je peux avoir le numero",
+      "comment te contacter", "comment vous contacter", "te contacter", "vous contacter",
+      "comment contacter", "contacter l equipe", "contacter l'équipe", "joindre l equipe"],
+     "Bien sûr 😊 " + CONTACT_LINE + " Tu veux que je te mette en relation maintenant ?"),
     (["parler à un humain"],
      "Pas de souci 🙋 Écris-nous directement et l'équipe te répond vite. Direct : {CONTACT_WA_PHONE}".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
     (["au revoir"],
@@ -270,7 +285,7 @@ SEED_QR: list[tuple[list[str], str]] = [
      "Un chatbot c'est un vendeur robot qui travaille pour toi 24/7. Il répond auto sur WhatsApp Facebook Telegram à tes clients, il qualifie et il prend la commande. Exemple client dit Prix à 2h du matin, le bot répond et conclut la vente. Tu veux voir un exemple en vrai ?"),
     (["c'est quoi un agent IA génératif", "c'est quoi une IA générative", "c'est quoi un agent ia générative"],
      "Un agent IA génératif ✨ c'est un chatbot boosté : il ne répond pas seulement, il AGIT et il CRÉE. Il peut générer des images, écrire des textes, produire des devis, apprendre tes produits et mener des actions de A à Z. C'est un employé digital polyvalent qui connaît ton business par cœur 💪 Tu veux le voir à l'œuvre sur ton activité ?"),
-    (["c'est quoi un agent IA commercial", "c'est quoi un agent ia commercial"],
+    (["c'est quoi un agent IA commercial"],
      "Un agent IA commercial 💼 c'est un vendeur digital : il qualifie les prospects, présente tes produits avec des visuels, répond aux objections, envoie les tarifs, relance les hésitants et clos la vente. Il connaît tout ton catalogue et ne prend jamais de pause 📈 Ton business vend 24h/24, de Kindia à Dubaï 🌍 Tu veux un devis pour le tien ?"),
     # RÈGLE LOGO (Boss 03/10) : jamais de personne dans un logo — K doré,
     # fond noir, style premium + pitch Pack Premium.

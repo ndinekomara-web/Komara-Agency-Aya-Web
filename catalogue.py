@@ -37,9 +37,9 @@ OFFICIAL_SERVICES = [
 
 def _schema() -> list[str]:
     if db.backend() == "postgres":
-        serial, real, blob = "BIGSERIAL PRIMARY KEY", "DOUBLE PRECISION", "BYTEA"
+        serial, real = "BIGSERIAL PRIMARY KEY", "DOUBLE PRECISION"
     else:
-        serial, real, blob = "INTEGER PRIMARY KEY AUTOINCREMENT", "REAL", "BLOB"
+        serial, real = "INTEGER PRIMARY KEY AUTOINCREMENT", "REAL"
     return [
         f"""
         CREATE TABLE IF NOT EXISTS products (

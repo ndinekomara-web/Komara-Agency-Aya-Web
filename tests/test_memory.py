@@ -232,3 +232,39 @@ def test_presentation_does_not_push_a_quote_out_of_nowhere():
     # pas proposer d'« passer au devis » à quelqu'un qui demande juste qui elle est.
     assert "on passe au devis" not in reply and "je m'en occupe maintenant" not in reply
     assert reply.count("?") == 1
+
+
+def test_contact_questions_give_the_number_from_the_variable(monkeypatch):
+    """« Votre numéro », « Numéro », « Contact » : le vrai numéro, pas « pas saisi »."""
+    monkeypatch.setenv("KOMARA_WHATSAPP", "+212 600 111 222")
+    import importlib
+
+    import aya_seed
+    import seed_engine
+
+    importlib.reload(aya_seed)
+    importlib.reload(seed_engine)
+    for text in ("Votre numéro", "Numéro", "Contact", "comment te contacter"):
+        hit = seed_engine.find_answer(text)
+        assert hit, text
+        assert "+212 600 111 222" in hit["answer"], (text, hit["answer"])
+
+
+def test_no_number_is_written_in_the_repository():
+    """Le numéro vit uniquement dans la variable d'hébergement."""
+    import pathlib
+
+    for path in pathlib.Path(".").rglob("*.py"):
+        if "tests" in str(path):
+            continue
+        assert "701 986" not in path.read_text(encoding="utf-8"), str(path)
+
+
+def test_rules_stay_neutral():
+    """Pas de fausse urgence, pas de fausse promo, pas de promesse invérifiable."""
+    forbidden = ("offre spéciale", "offre limitee", "offre limitée", "dernière chance",
+                 "derniere chance", "places limitées", "aujourd'hui seulement",
+                 "au lieu de", "100% garanti", "garantie de résultat", "résultat garanti")
+    for text in ("prix", "tarifs", "services", "prix du bot", "devis", "combien coûte un site"):
+        reply = say("neutre-" + text, text).lower()
+        assert not any(f in reply for f in forbidden), (text, reply)

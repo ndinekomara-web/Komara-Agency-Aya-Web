@@ -9,8 +9,5 @@ Bot scripté : 48h à 7 jours selon les fonctionnalités. Les délais exacts son
 ## Comment payer
 50% au démarrage et 50% à la livraison. Orange Money, MTN, paiement mobile, virement.
 
-## Comment te contacter
-Le plus simple : écris directement à l'équipe sur WhatsApp, elle te répond dans la journée.
-
 ## C'est quoi un chatbot
 Un chatbot, c'est un vendeur robot qui travaille pour toi 24/7. Il répond automatiquement sur WhatsApp, Messenger, Instagram et Telegram, qualifie les clients et te passe la main au besoin.
