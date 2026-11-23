@@ -433,7 +433,7 @@ def reply_confirmation(profile: dict[str, Any]) -> str | None:
         memory.set_stage(profile, "devis")
         # Projet déjà clair (service + activité connus) : on ne redemande rien,
         # on passe au numéro pour que l'équipe envoie le devis.
-        if service and (profile.get("sector") or profile.get("usage")):
+        if service and (profile.get("sector") or profile.get("usage") or profile.get("project")):
             return (
                 f"{hello} J'ai tout ce qu'il me faut pour ton devis. "
                 "Donne-moi ton numéro WhatsApp et l'équipe te l'envoie rapidement."
@@ -672,6 +672,52 @@ def reply_to_last_question(profile: dict[str, Any], text: str) -> str | None:
             "Ton numéro WhatsApp pour qu'on t'envoie le devis ?"
         ).replace("  ", " ")
 
+    # « C'est pour quel événement ou quelle promotion, l'affiche ? »
+    if "quel événement" in asked or "quelle promotion" in asked:
+        memory.set_stage(profile, "offre")
+        profile["last_question"] = ""
+        profile["open_question"] = ""
+        subject = _clean_subject(text)
+        if subject:
+            profile["project"] = subject
+        about = f" pour {subject}" if subject else ""
+        return (
+            f"{thanks} 👌 Une affiche{about}, c'est noté. {_price_once(profile)}"
+            "Envoie-moi les infos à mettre dessus (nom, date, lieu, photo si tu en as) "
+            "et on s'en occupe. "
+            "Ton numéro WhatsApp pour qu'on t'envoie le devis ?"
+        ).replace("  ", " ")
+
+    # « Tu m'envoies la photo avec le trombone, et je te dis ce qu'on peut faire ? »
+    if "photo" in asked and ("trombone" in asked or "envoies" in asked):
+        memory.set_stage(profile, "offre")
+        profile["last_question"] = ""
+        profile["open_question"] = ""
+        return (
+            f"{thanks} 👌 Dès que j'ai ta photo, on voit ce qu'on peut faire. {_price_once(profile)}"
+            "Ton numéro WhatsApp pour qu'on t'envoie le devis ?"
+        ).replace("  ", " ")
+
+    # « Ta page a combien d'abonnés environ ? »
+    if "abonnés" in asked or "abonnes" in asked:
+        memory.set_stage(profile, "offre")
+        profile["last_question"] = ""
+        profile["open_question"] = ""
+        return (
+            f"{thanks} 👌 C'est noté, on adapte la modération à ton volume. "
+            "Ton numéro WhatsApp pour qu'on te fasse une proposition adaptée ?"
+        )
+
+    # « C'est une pub, un Reel, ou une présentation de ton activité ? »
+    if "reel" in asked and ("pub" in asked or "présentation" in asked):
+        memory.set_stage(profile, "offre")
+        profile["last_question"] = ""
+        profile["open_question"] = ""
+        return (
+            f"{thanks} 👌 C'est noté. Le prix dépend de la durée et du style, "
+            "donc on te fait un devis gratuit. Ton numéro WhatsApp pour te l'envoyer ?"
+        )
+
     # « Tu fais quoi comme activité ? » : la réponse est un secteur ou une activité.
     if "activité" in asked or "quel type de business" in asked:
         if profile.get("sector") or len(low.split()) <= 8:
@@ -691,6 +737,19 @@ _OWN_QUESTION = re.compile(
     r"livr|pay|garantie|rembours|marche|fonctionne|diff[ée]rence|exemple)\b|\?",
     re.IGNORECASE,
 )
+
+
+def _clean_subject(text: str) -> str:
+    """« Pour mon anniversaire » -> « ton anniversaire » (on reprend ses mots, à la 2e personne)."""
+    subject = re.sub(r"^(c['’]est\s+)?(pour|pr|pour\s+le|pour\s+la)\s+", "", text.strip(), flags=re.I)
+    subject = subject.strip(" .!?,;")
+    if not subject or len(subject.split()) > 10:
+        return ""
+    # « la fête de mon salon » -> « la fête de ton salon » : on parle à lui, à la 2e personne.
+    subject = re.sub(r"\bmon\b", "ton", subject, flags=re.I)
+    subject = re.sub(r"\bma\b", "ta", subject, flags=re.I)
+    subject = re.sub(r"\bmes\b", "tes", subject, flags=re.I)
+    return subject
 
 
 def _is_own_question(low: str) -> bool:

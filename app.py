@@ -400,19 +400,59 @@ async def upload(file: UploadFile = File(...), session_id: str = "") -> dict:
 
     lang = get_language(session)
     reply = {
-        "fr": "Bien reçu 📎 J'ai transmis le fichier à l'équipe Komara. Dis-moi ce que tu veux qu'on en fasse : logo, affiche, site, bot ?",
-        "en": "Got it 📎 I passed the file to the Komara team. Tell me what you want: logo, poster, website, bot?",
-        "es": "Recibido 📎 Lo pasé al equipo Komara. ¿Qué quieres: logo, cartel, sitio, bot?",
-        "ar": "تم الاستلام 📎 أرسلته لفريق كومارا. ماذا تريد: شعار، ملصق، موقع، بوت؟",
-    }.get(lang, "Bien reçu 📎 J'ai transmis le fichier à l'équipe Komara.")
-    chat_store.add_message(session, "user", f"📎 {file.filename or 'fichier'}", lang)
+        "fr": "Bien reçu 📎 Ndine le voit directement dans son espace. Dis-moi ce que tu veux qu'on en fasse : logo, affiche, site ou bot ?",
+        "en": "Got it 📎 Ndine can see it right in his space. Tell me what you want to do with it: logo, poster, website or bot?",
+        "es": "Recibido 📎 Ndine lo ve directamente en su espacio. ¿Qué quieres hacer: logo, cartel, sitio o bot?",
+        "ar": "تم الاستلام 📎 ندين يراه مباشرة في مساحته. ماذا تريد: شعار، ملصق، موقع أو بوت؟",
+    }.get(lang, "Bien reçu 📎 Ndine le voit directement dans son espace.")
+    # Le message du client garde un lien vers SON fichier : l'image s'affiche
+    # dans la bulle, et revient après rechargement de la page.
+    is_image = (file.content_type or "").startswith("image/")
+    marker = f"[[file:{upload_id}:{'img' if is_image else 'doc'}:{file.filename or 'fichier'}]]"
+    chat_store.add_message(session, "user", marker, lang)
     chat_store.add_message(session, "assistant", reply, lang)
-    return {"id": upload_id, "filename": file.filename, "reply": reply, "session_id": session}
+    return {
+        "id": upload_id,
+        "filename": file.filename,
+        "is_image": is_image,
+        "url": f"/api/upload/{upload_id}?session_id={session}",
+        "reply": reply,
+        "session_id": session,
+    }
+
+
+@app.get("/api/upload/{upload_id}", dependencies=[Depends(require_access)])
+def my_upload(upload_id: int, session_id: str = ""):
+    """Le client revoit son propre fichier (jamais celui d'un autre)."""
+    row = chat_store.upload_for_session(upload_id, session_id or "anonyme")
+    if not row:
+        raise HTTPException(status_code=404, detail="Fichier introuvable.")
+    content_type = row.get("content_type") or "application/octet-stream"
+    # Seules les images s'affichent dans la page ; le reste se télécharge.
+    disposition = "inline" if content_type.startswith("image/") else "attachment"
+    return Response(
+        content=row["data"],
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'{disposition}; filename="{row["filename"]}"',
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, max-age=3600",
+        },
+    )
 
 
 @app.get("/api/admin/uploads", dependencies=[Depends(require_admin)])
 def admin_uploads(limit: int = 50) -> dict:
-    return {"uploads": chat_store.uploads(max(1, min(limit, 200)))}
+    """Fichiers reçus, avec le client tel qu'Aya l'a appris dans la conversation."""
+    import client_memory
+
+    files = chat_store.uploads(max(1, min(limit, 200)))
+    for file in files:
+        profile = client_memory.get(str(file.get("session_id", "")))
+        file["client"] = profile.get("name") or "Client sans prénom"
+        file["project"] = profile.get("service") or ""
+        file["is_image"] = str(file.get("content_type", "")).startswith("image/")
+    return {"uploads": files}
 
 
 @app.get("/api/admin/uploads/{upload_id}", dependencies=[Depends(require_admin)])

@@ -268,3 +268,53 @@ def test_rules_stay_neutral():
     for text in ("prix", "tarifs", "services", "prix du bot", "devis", "combien coûte un site"):
         reply = say("neutre-" + text, text).lower()
         assert not any(f in reply for f in forbidden), (text, reply)
+
+
+def test_answer_to_the_poster_question_is_understood():
+    """« Pour mon anniversaire » répond à « quel événement ? » : plus de « pas saisi »."""
+    session = "poster-1"
+    say(session, "Une affiche")
+    reply = say(session, "Pour mon anniversaire").lower()
+    assert "pas bien saisi" not in reply
+    assert "anniversaire" in reply and "30 €" in reply
+
+
+def test_every_qualification_question_understands_its_answer():
+    for first, answer in (
+        ("une retouche photo", "oui"),
+        ("modération de page", "5000 abonnés"),
+        ("une vidéo", "une pub"),
+        ("un logo", "oui j'ai un nom"),
+    ):
+        session = "qual-" + first
+        say(session, first)
+        assert "pas bien saisi" not in say(session, answer).lower(), (first, answer)
+
+
+def test_client_sees_own_file_and_nobody_elses():
+    """L'image envoyée s'affiche pour son auteur, et reste invisible pour les autres."""
+    import base64
+
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+    )
+    sent = client.post("/api/upload?session_id=owner-A", files={"file": ("a.png", png, "image/png")}).json()
+    assert sent["is_image"] and "Ndine" in sent["reply"]
+
+    mine = client.get(sent["url"])
+    assert mine.status_code == 200 and mine.headers["content-type"] == "image/png"
+
+    other = client.get(f"/api/upload/{sent['id']}?session_id=owner-B")
+    assert other.status_code == 404
+
+    history = client.get("/api/history?session_id=owner-A&limit=5").json()["messages"]
+    assert history[0]["content"].startswith("[[file:")
+
+
+def test_uploaded_html_never_runs_in_the_page():
+    trap = client.post(
+        "/api/upload?session_id=owner-C", files={"file": ("x.html", b"<script>1</script>", "text/html")}
+    ).json()
+    reply = client.get(trap["url"])
+    assert reply.headers["content-disposition"].startswith("attachment")
+    assert reply.headers["x-content-type-options"] == "nosniff"

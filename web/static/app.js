@@ -96,7 +96,29 @@
 
   // Rendu sûr : on échappe le HTML, puis on met en gras le *texte* (comme
   // WhatsApp) et on garde les retours à la ligne.
+  const FILE_MARK = /^\[\[file:(\d+):(img|doc):([^\]]*)\]\]$/;
+
+  function fileUrl(id) {
+    return `/api/upload/${id}?session_id=${encodeURIComponent(sessionId)}`;
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // Un fichier envoyé s'affiche : image en vignette (clic = agrandir), document en pastille.
+  function renderFile(match) {
+    const [, id, kind, name] = match;
+    const safeName = escapeHtml(name);
+    if (kind === "img") {
+      return `<a class="shot" href="${fileUrl(id)}" target="_blank" rel="noopener"><img src="${fileUrl(id)}" alt="${safeName}" loading="lazy"></a>`;
+    }
+    return `<a class="docchip" href="${fileUrl(id)}" target="_blank" rel="noopener">📎 ${safeName}</a>`;
+  }
+
   function renderText(text) {
+    const fileMatch = String(text).trim().match(FILE_MARK);
+    if (fileMatch) return renderFile(fileMatch);
     const escaped = String(text)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -286,12 +308,26 @@
     const form = new FormData();
     form.append("file", file);
     form.append("session_id", sessionId);
-    addMessage("user", `📎 ${file.name}`);
+    // Aperçu immédiat : le client voit tout de suite ce qu'il envoie.
+    const isImage = (file.type || "").startsWith("image/");
+    const localUrl = isImage ? URL.createObjectURL(file) : "";
+    const previewBubble = addMessage("user", "");
+    if (previewBubble) {
+      previewBubble.insertAdjacentHTML(
+        "afterbegin",
+        isImage
+          ? `<a class="shot"><img src="${localUrl}" alt="${escapeHtml(file.name)}"></a>`
+          : `<span class="docchip">📎 ${escapeHtml(file.name)}</span>`
+      );
+    }
     addTyping();
     try {
       const response = await fetch("/api/upload", { method: "POST", body: form, credentials: "same-origin" });
       if (!response.ok) throw new Error("upload");
       const data = await response.json();
+      // Le lien serveur remplace l'aperçu local : l'image reste cliquable.
+      const link = previewBubble && previewBubble.querySelector("a");
+      if (link && data.url) { link.href = data.url; link.target = "_blank"; link.rel = "noopener"; }
       removeTyping();
       addMessage("assistant", data.reply || "Bien reçu 📎 J'ai transmis le fichier à l'équipe Komara.");
     } catch {

@@ -222,8 +222,19 @@
         link.className = "link";
         link.href = `/api/admin/uploads/${file.id}`;
         link.target = "_blank";
-        link.textContent = "Ouvrir";
-        list.appendChild(entry(file.filename, fmt(file.created_at), file.content_type || "", link));
+        link.rel = "noopener";
+        if (file.is_image) {
+          // Aperçu de l'image reçue
+          const thumb = document.createElement("img");
+          thumb.src = link.href;
+          thumb.alt = file.filename;
+          thumb.style.cssText = "display:block;width:96px;height:96px;object-fit:cover;border-radius:10px;";
+          link.appendChild(thumb);
+        } else {
+          link.textContent = "Ouvrir";
+        }
+        const who = file.client + (file.project ? ` · ${file.project}` : "");
+        list.appendChild(entry(`${file.filename} — ${who}`, fmt(file.created_at), file.content_type || "", link));
       });
     } catch (_) {}
   }

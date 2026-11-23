@@ -333,6 +333,15 @@ def uploads(limit: int = 50) -> list[dict[str, Any]]:
     )
 
 
+def upload_for_session(upload_id: int, session_id: str) -> dict[str, Any] | None:
+    """Un client ne peut ouvrir QUE ses propres fichiers."""
+    rows = db.run(
+        "SELECT id, filename, content_type, data FROM uploads WHERE id = ? AND session_id = ?",
+        (upload_id, session_id),
+    )
+    return rows[0] if rows else None
+
+
 def upload_data(upload_id: int) -> dict[str, Any] | None:
     rows = db.run(
         "SELECT id, filename, content_type, data FROM uploads WHERE id = ?", (upload_id,)
