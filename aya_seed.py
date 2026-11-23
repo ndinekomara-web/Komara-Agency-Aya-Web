@@ -43,7 +43,7 @@ class SeedResult(TypedDict, total=False):
 
 SEED_QR: list[tuple[list[str], str]] = [
     (["salut"],
-     "Salut toi 👋 Moi c'est Aya, l'assistante de Komara Agency 🇬🇳 Dis-moi ce que tu cherches, je suis là pour t'aider à briller ✨"),
+     "Salut mon ami 👋 Moi c'est Aya, de Komara Agency. Dis-moi ce que tu veux lancer et on s'en occupe ensemble."),
     (["bonjour"],
      "Bonjour et bienvenue chez Komara Agency 🇬🇳 On crée des bots qui vendent, des sites et des visuels qui marquent. Tu veux voir nos services ? Dis-moi 'services' 👇"),
     (["bonsoir"],
@@ -52,8 +52,14 @@ SEED_QR: list[tuple[list[str], str]] = [
      "Ça va bien merci 🙏 Moi je suis Aya, prête à t'aider. Et toi, tu viens pour un bot, un site ou un visuel ?"),
     (["comment ça va"],
      "Ça roule 😎 Merci de demander ! On est là pour booster ton business. Tu veux commencer par quoi ?"),
+    (["tu es un robot", "tu es une ia", "tu es un bot", "c'est un robot", "es-tu un robot",
+      "es tu une ia", "tu es humaine", "tu es un humain", "c'est une ia", "je parle a un robot",
+      "je parle à un robot", "are you a robot", "are you an ai", "eres un robot"],
+     "Aya 😊 Je travaille avec Ndine chez Komara Agency. Je réponds aux messages, je prépare "
+     "les devis et je suis les commandes pour lui. Si tu préfères lui parler en direct, dis-le-moi "
+     "et je te le passe tout de suite. Tu veux lancer quoi ?"),
     (["qui es-tu", "qui es tu", "qui est tu", "qui êtes vous", "tu es qui"],
-     "Je suis Aya 🤖 l'IA de Komara Agency 🇬🇳 Je parle aux clients à ta place, 24h/24, en français, arabe, anglais et espagnol. Tu veux me tester ?"),
+     "Moi c'est Aya, de Komara Agency 🇬🇳 Je réponds aux clients, je prépare les devis et je suis les commandes pour Ndine, 24h/24, en français, arabe, anglais et espagnol. Dis-moi ce que tu veux lancer, je m'en occupe."),
     # IDENTITÉ AGENCE / FONDATEUR (Boss 14/10, screenshots : « Qui est
     # Komara Agency », « C'est quoi Komara Agency », « Qui est Ndine Komara »
     # recevaient le slogan des services au lieu d'une vraie présentation).
@@ -198,8 +204,9 @@ SEED_QR: list[tuple[list[str], str]] = [
      "business, et tu décides quand tu es prêt. L'audit est offert, aucune "
      "obligation. Je te le prépare ? (Oui / Non)"),
     (["services"],
-
-     "Nos services 🚀\n• Bots WhatsApp & Telegram\n• Sites web vitrine & e-commerce\n• Logos & identité visuelle\n• Affiches & visuels pub\n• Gestion de RDV automatique\nTape 'prix' pour les tarifs 👇"),
+     "On fait quatre choses, et on les fait bien : des bots WhatsApp et Telegram qui vendent à ta place, "
+     "des sites web qui transforment les visiteurs en clients, des logos et des visuels qui marquent, et "
+     "la gestion des rendez-vous sans que tu touches à rien. Tu veux les prix ?"),
     (["c'est combien le logo", "prix logo", "combien le logo"],
      "Un logo, c'est {LOGO}, livré en 24h, avec les fichiers HD et les sources. "
      "Tu me donnes le nom de ton business et je te montre une première version ?".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
@@ -210,7 +217,9 @@ SEED_QR: list[tuple[list[str], str]] = [
      "Un site vitrine, c'est {SITE}, livré en 7 jours. Il présente ton activité, tes services et tes contacts, "
      "et il est pensé pour transformer les visiteurs en clients. On regarde ton projet ?".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
     (["prix", "tarifs", "combien ça coûte en tout"],
-     "Tarifs 🇬🇳\n• Logo seul : {LOGO} (livré en 24h)\n• Affiche/visuel : {AFFICHE}\n• Site vitrine : {SITE} (7 jours)\n• Retouche photo : {RETOUCHE}\nExpress 24h : +30%\nDis-moi ce qui t'intéresse pour commander 👇".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
+     "Je te dis tout simplement 😊 Un logo c'est {LOGO}, livré en 24h. Une affiche {AFFICHE}. "
+     "Un site vitrine {SITE}, en 7 jours. Une retouche photo {RETOUCHE}. Et si c'est urgent, "
+     "l'express 24h c'est +30%. Tu veux lequel ?".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
     (["combien ça coûte"],
      "Ça dépend du projet 😊 Logo seul {LOGO}, affiche {AFFICHE_COURT}, site {SITE_COURT}. Dis-moi ce que tu veux exactement et je te donne le prix précis.".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
     (["délai"],
@@ -304,23 +313,25 @@ SEED_QR_ML: dict[str, list[tuple[list[str], str]]] = {
     "en": [
         (["how much does a website cost", "website cost", "website price", "how much for a website", "price of a website", "cost for a website", "what does a website cost", "how much is a website"],
          "Let me be straight with you 💰\n\nAt KOMARA AGENCY 🇬🇳 we don't sell fixed prices, we sell RESULTS.\n\n👉 It depends on what you need:\n1️⃣ BOT / AI AGENT: from 50 € - it replaces 2 employees 24/7\n2️⃣ WEBSITE that sells: from 50 €\n3️⃣ PREMIUM LOGO + Brand kit: from 50 €\n4🏵️ FULL PACK (Bot + Website + Logo) = DEAL 🚀\n\nIt's not an expense, it's a machine that pays you back. One client and it's already profitable.\n\nType 'DEVIS' now and get your free quote in 2 minutes with N-Dine on WhatsApp\nJust tell me: BOT, WEBSITE or LOGO ?"),
+        (["hello", "hi", "hey", "good morning", "good evening", "hello aya", "hi aya"],
+         "Hey 👋 I'm Aya, from Komara Agency. Tell me what you want to launch and we'll take care of it together."),
         (["what services do you offer", "your services", "services", "what do you do", "what do you offer", "what are your services"],
-         "I'm AYA 🤖 the all-in-one assistant of KOMARA AGENCY 🇬🇳 Here's what we do for you:\n\n🚀 1. AUTOMATION & AI AGENTS\n> I build your AI employee that answers, sells and handles support on WhatsApp & Telegram 24/7. You sleep, she sells.\n\n💻 2. WEB DESIGN THAT SELLS\n> No dead websites. We build sites that turn visitors into paying clients.\n\n🎨 3. PREMIUM DESIGN & LOGO\n> Logo, brand kit, visuals that make your brand stand out.\n\n🎬 4. AI VIDEO & CONTENT\n> Ads, Reels, pro videos generated with AI.\n\nIn short: we turn your business into an automatic sales machine.\n\nType:\n1🏵️ for BOT / AI AGENT\n2🏵️ for WEBSITE\n3🏵️ for LOGO / VISUAL\n4🏵️ for a full QUOTE"),
+         "I'm Aya, from KOMARA AGENCY 🇬🇳 Here's what we do for you:\n\n🚀 1. AUTOMATION & AI AGENTS\n> I build your AI employee that answers, sells and handles support on WhatsApp & Telegram 24/7. You sleep, she sells.\n\n💻 2. WEB DESIGN THAT SELLS\n> No dead websites. We build sites that turn visitors into paying clients.\n\n🎨 3. PREMIUM DESIGN & LOGO\n> Logo, brand kit, visuals that make your brand stand out.\n\n🎬 4. AI VIDEO & CONTENT\n> Ads, Reels, pro videos generated with AI.\n\nIn short: we turn your business into an automatic sales machine.\n\nType:\n1🏵️ for BOT / AI AGENT\n2🏵️ for WEBSITE\n3🏵️ for LOGO / VISUAL\n4🏵️ for a full QUOTE"),
     ],
     "es": [
         (["cuanto cuesta un sitio web", "precio sitio web", "precio de un sitio web", "cuanto cuesta una pagina web", "precio pagina web"],
          "Te lo digo claro 💰\n\nEn KOMARA AGENCY 🇬🇳 no vendemos precios fijos, vendemos RESULTADOS.\n\n👉 Depende de lo que necesitas:\n1️⃣ BOT / AGENTE IA: desde 50 € - reemplaza 2 empleados 24/7\n2️⃣ SITIO WEB que vende: desde 50 €\n3️⃣ LOGO PREMIUM + identidad: desde 50 €\n4🏵️ PACK COMPLETO (Bot + Sitio + Logo) = OFERTA 🚀\n\nNo es un gasto, es una máquina que te lo devuelve. Un solo cliente y ya está pagado.\n\nEscribe 'DEVIS' ahora y recibe tu presupuesto gratis en 2 minutos con N-Dine en WhatsApp\nDime solo: BOT, SITIO o LOGO ?"),
         (["que servicios ofrecen", "sus servicios", "servicios", "que hacen", "que ofrecen", "cuales son sus servicios"],
-         "Soy AYA 🤖 la asistente todoterreno de KOMARA AGENCY 🇬🇳 Esto es lo que hacemos por ti:\n\n🚀 1. AUTOMATIZACIÓN Y AGENTES IA\n> Creo tu empleada IA que responde, vende y atiende en WhatsApp y Telegram 24/7. Tú duermes, ella vende.\n\n💻 2. DISEÑO WEB QUE VENDE\n> Nada de sitios muertos. Creamos sitios que convierten visitantes en clientes.\n\n🎨 3. DISEÑO Y LOGO PREMIUM\n> Logo, identidad y visuales que imponen tu marca.\n\n🎬 4. VIDEO Y CONTENIDO CON IA\n> Anuncios, Reels y vídeos profesionales generados con IA.\n\nEn resumen: convertimos tu negocio en una máquina de ventas automática.\n\nEscribe:\n1🏵️ para BOT / AGENTE IA\n2🏵️ para SITIO WEB\n3🏵️ para LOGO / VISUAL\n4🏵️ para un PRESUPUESTO completo"),
+         "Soy Aya, de KOMARA AGENCY 🇬🇳 Esto es lo que hacemos por ti:\n\n🚀 1. AUTOMATIZACIÓN Y AGENTES IA\n> Creo tu empleada IA que responde, vende y atiende en WhatsApp y Telegram 24/7. Tú duermes, ella vende.\n\n💻 2. DISEÑO WEB QUE VENDE\n> Nada de sitios muertos. Creamos sitios que convierten visitantes en clientes.\n\n🎨 3. DISEÑO Y LOGO PREMIUM\n> Logo, identidad y visuales que imponen tu marca.\n\n🎬 4. VIDEO Y CONTENIDO CON IA\n> Anuncios, Reels y vídeos profesionales generados con IA.\n\nEn resumen: convertimos tu negocio en una máquina de ventas automática.\n\nEscribe:\n1🏵️ para BOT / AGENTE IA\n2🏵️ para SITIO WEB\n3🏵️ para LOGO / VISUAL\n4🏵️ para un PRESUPUESTO completo"),
     ],
     "ar": [
         # BOSS 19/10 (screens 15:01) : « Salam » détecté darija -> AR ->
         # aucune fiche greeting AR -> « QUESTION NON RÉPONDU ». Un salut
         # ne doit JAMAIS être une question sans réponse.
         (["salam", "salam boss", "salam bro", "salam aleykoum", "السلام عليكم", "سلام", "مرحبا", "أهلا"],
-         "وعليكم السلام 👋 أنا آيا، الذكاء الاصطناعي لوكالة كومارا 🇬🇳 بوتات تبيع، مواقع، شعارات ولوحات — أعمل لأجلك 24/7 حتى وأنت نائم 😴 اكتب 'menu' لرؤية كل شيء 👇"),
+         "وعليكم السلام 👋 أنا آيا، من وكالة كومارا 🇬🇳 بوتات تبيع، مواقع، شعارات ولوحات — أعمل لأجلك 24/7 حتى وأنت نائم 😴 اكتب 'menu' لرؤية كل شيء 👇"),
         (["ما هي خدماتكم", "خدماتكم", "الخدمات", "ماذا تقدمون", "ماذا تفعلون"],
-         "أنا AYA 🤖 المساعدة الذكية لـ KOMARA AGENCY 🇬🇳 هذا ما نقدمه لك :\n\n🚀 1. الأتمتة ووكلاء الذكاء الاصطناعي\n> أنشئ لك موظفة ذكية تردّ وتبيع وتخدم العملاء على واتساب وتيليجرام 24/7. أنت نائم، وهي تبيع.\n\n💻 2. تصميم مواقع تبيع\n> لا مواقع ميتة. نصنع مواقع تحوّل الزوار إلى عملاء يدفعون.\n\n🎨 3. تصميم وشعارات مميزة\n> شعار وهوية ومرئيات تفرض علامتك التجارية.\n\n🎬 4. فيديو ومحتوى بالذكاء الاصطناعي\n> إعلانات ومقاطع احترافية بالذكاء الاصطناعي.\n\nباختصار: نحوّل مشروعك إلى آلة مبيعات أوتوماتيكية.\n\nاكتب:\n1🏵️ للبوت / الوكيل الذكي\n2🏵️ للموقع\n3🏵️ للشعار / المرئيات\n4🏵️ لطلب عرض سعر كامل\n\nأو تواصل معنا مباشرة على واتساب: {CONTACT_WA_PHONE}".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
+         "أنا آيا، من وكالة كومارا 🇬🇳 هذا ما نقدمه لك :\n\n🚀 1. الأتمتة ووكلاء الذكاء الاصطناعي\n> أنشئ لك موظفة ذكية تردّ وتبيع وتخدم العملاء على واتساب وتيليجرام 24/7. أنت نائم، وهي تبيع.\n\n💻 2. تصميم مواقع تبيع\n> لا مواقع ميتة. نصنع مواقع تحوّل الزوار إلى عملاء يدفعون.\n\n🎨 3. تصميم وشعارات مميزة\n> شعار وهوية ومرئيات تفرض علامتك التجارية.\n\n🎬 4. فيديو ومحتوى بالذكاء الاصطناعي\n> إعلانات ومقاطع احترافية بالذكاء الاصطناعي.\n\nباختصار: نحوّل مشروعك إلى آلة مبيعات أوتوماتيكية.\n\nاكتب:\n1🏵️ للبوت / الوكيل الذكي\n2🏵️ للموقع\n3🏵️ للشعار / المرئيات\n4🏵️ لطلب عرض سعر كامل\n\nأو تواصل معنا مباشرة على واتساب: {CONTACT_WA_PHONE}".format(**PRICES, CONTACT_WA_PHONE=CONTACT_WA_PHONE)),
     ],
 }
 

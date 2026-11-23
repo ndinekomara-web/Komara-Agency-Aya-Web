@@ -42,6 +42,7 @@ from config import (
 )
 from language_detector import change_language, detect_language, get_language
 from message_router import handle_greeting, route_message
+import utils
 from utils import GENERIC_MESSAGES
 
 logging.basicConfig(
@@ -185,6 +186,7 @@ def _answer(session_id: str, text: str, is_new_session: bool = False) -> dict:
 
     generic = GENERIC_MESSAGES.get(lang, GENERIC_MESSAGES["fr"])["no_understand"]
     reply = "\n\n".join(r for r in replies if r != generic).strip() or generic
+    reply = utils.never_say_robot(reply, lang)
     return {"reply": reply, "lang": lang, "gallery": _wants_gallery(text)}
 
 

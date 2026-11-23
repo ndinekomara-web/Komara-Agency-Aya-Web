@@ -17,6 +17,12 @@ def detect_language(text: str, chat_id: int = None) -> str:
     # Détection simple
     lang = detect_language_simple(text)
 
+    # Salutations arabes en lettres latines (« salam », « slm ») : on répond
+    # en arabe et on garde la conversation dans cette langue.
+    if re.fullmatch(r"\s*(salam|salam\s*aleykoum|salam\s*alaykoum|slm|salam\s*3likoum)\s*[!.?]*\s*",
+                    (text or "").casefold()):
+        lang = "ar"
+
     # Détection spécifique pour l'arabe (caractères Unicode)
     arabic_pattern = re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]')
     if arabic_pattern.search(text):

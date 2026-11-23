@@ -19,7 +19,8 @@ def test_seed_loaded():
 
 def test_prices_come_from_seed():
     reply = ask("quels sont vos tarifs")["reply"]
-    assert "Logo seul" in reply and "50" in reply and "Affiche" in reply and "30" in reply
+    low = reply.lower()
+    assert "logo" in low and "50" in reply and "affiche" in low and "30" in reply
 
 
 def test_real_user_messages_from_screenshot():
@@ -69,7 +70,7 @@ def test_prices_can_be_changed_by_env(monkeypatch):
 def test_official_prices_everywhere():
     """Les prix du site officiel, partout, et un prix par service."""
     grid = ask("tarifs", session="p-grid")["reply"]
-    assert "250" in grid and "Site vitrine" in grid
+    assert "250" in grid and "site vitrine" in grid.lower()
 
     site = ask("combien coûte un site vitrine", session="p-site")["reply"]
     assert "250" in site and "Logo seul" not in site

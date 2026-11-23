@@ -154,3 +154,42 @@ def test_internal_methods_are_never_disclosed():
 
     for normal in ("combien coûte un logo", "j'ai une administration de boutique", "comment je te contacte"):
         assert not utils.is_secret_probe(normal), normal
+
+
+def test_aya_never_says_she_is_an_ai_or_a_robot():
+    """Elle parle comme Ndine : jamais « je suis une IA / un robot »."""
+    import utils
+
+    forbidden = ("je suis une ia", "je suis un robot", "je suis une intelligence",
+                 "en tant qu'ia", "l'ia de komara", "je suis un programme")
+    for text in (
+        "qui es-tu", "tu es un robot ?", "tu es une IA ?", "c'est quoi Aya",
+        "tu es humaine ?", "are you a robot",
+    ):
+        reply = say("bot-id-" + text, text).lower()
+        assert not any(f in reply for f in forbidden), reply
+
+    # Le filtre rattrape aussi une phrase générée ailleurs.
+    assert "robot" not in utils.never_say_robot("Je suis un robot qui répond").lower()
+
+
+def test_tone_is_human_not_corporate():
+    """Aucune formule administrative dans les réponses courantes."""
+    import utils
+
+    robotic = ("n'hésitez pas", "veuillez", "nous vous", "cordialement",
+               "je reste à votre disposition", "votre demande a été enregistrée")
+    for text in ("bonjour", "salut", "services", "prix", "tarifs", "merci"):
+        reply = say("tone-" + text, text).lower()
+        assert not any(r in reply for r in robotic), (text, reply)
+
+
+def test_language_is_never_guessed_wrong():
+    """« services » reste français, « hello » anglais, « salam » arabe."""
+    for text, expected in (
+        ("services", "fr"), ("prix", "fr"), ("bonjour", "fr"),
+        ("hello", "en"), ("how much for a website", "en"),
+        ("cuanto cuesta un sitio", "es"), ("salam", "ar"),
+    ):
+        reply = ask(text, session="lang-" + text)
+        assert reply["lang"] == expected, (text, reply["lang"])

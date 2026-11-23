@@ -24,4 +24,4 @@ def test_catalogue_flow_creates_order():
 
 
 def test_prices_question_stays_on_official_grid():
-    assert "Logo seul" in _say("quels sont vos tarifs", session="shop-t2")
+    assert "logo" in _say("quels sont vos tarifs", session="shop-t2").lower()

@@ -3,6 +3,7 @@ Routeur de messages : découpe la logique de _process_text en fonctions modulair
 Chaîne de responsabilité pour traiter les messages dans le bon ordre.
 """
 import re
+import utils
 from utils import clean_text, is_secret_probe, GENERIC_MESSAGES
 from language_detector import detect_language, get_language
 from pending_question import get_pending, is_valid_answer, clear_pending
@@ -89,6 +90,8 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
         """Envoie la réponse et enregistre la mémoire (une seule fois par tour)."""
         if welcome_back and not message.startswith("Content de te revoir"):
             message = welcome_back + message
+        # Aya ne se présente jamais comme une IA ou un robot.
+        message = utils.never_say_robot(message, lang)
         conversation.remember_question(profile, message)
         client_memory.save(str(chat_id), profile)
         bot_send_func(chat_id, message)

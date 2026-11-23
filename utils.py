@@ -77,8 +77,42 @@ def is_secret_probe(text: str) -> bool:
     return False
 
 
+# Mots partagés entre plusieurs langues : « services » n'est pas de l'anglais.
+_AMBIGUOUS_FR = {
+    "services", "service", "prix", "prix?", "tarif", "tarifs", "info", "infos",
+    "ok", "okay", "merci", "bonjour", "salut", "bonsoir", "catalogue", "panier",
+    "commande", "commander", "devis", "contact", "whatsapp", "telegram", "logo",
+    "site", "web", "video", "vidéo", "photo", "design", "delai", "délai",
+}
+_FR_MARKERS = (
+    " le ", " la ", " les ", " un ", " une ", " des ", " du ", " de ", " je ",
+    " tu ", " vous ", " nous ", " mon ", " ma ", " mes ", " ton ", " ta ",
+    " c'est ", " est ", " combien", " quel ", " quelle ", " pour ", " avec ",
+    " svp", " stp", " merci", " veux ", " veut ", " besoin ", " coûte", " coute",
+)
+_EN_MARKERS = (" the ", " a ", " an ", " how ", " much", " what ", " i want", " need ", " price", " cost",
+               "hello", "hey", "thanks", "please", "i am", "i'm")
+_ES_MARKERS = (" cuanto", " precio", " quiero", " necesito", " pagina", " sitio ", " hola", " gracias")
+
+
 def detect_language_simple(text: str) -> str:
     """Détection de langue simple basée sur les caractères et mots-clés."""
+    low = f" {(text or '').casefold().strip()} "
+    words = [w for w in low.split() if w]
+    # Un seul mot courant (« services », « prix ») : on reste en français,
+    # sinon « services » partait en anglais et la fiche anglaise répondait.
+    if len(words) <= 2 and all(w.strip("?!.") in _AMBIGUOUS_FR for w in words):
+        return "fr"
+    # L'espagnol et l'anglais d'abord : « un », « de », « a » sont partagés,
+    # donc un marqueur fort doit gagner avant les mots-outils français.
+    if any(marker in low for marker in _ES_MARKERS):
+        return "es"
+    if any(marker in low for marker in _EN_MARKERS):
+        return "en"
+    if any(marker in low for marker in _FR_MARKERS):
+        return "fr"
+    if len(words) <= 2:
+        return "fr"
     try:
         from langdetect import detect
         lang = detect(text)
@@ -120,3 +154,40 @@ GENERIC_MESSAGES = {
         "ask_precision": "Could you clarify your question? I want to give you the best possible answer.",
     },
 }
+
+
+# =================================================================
+# IDENTITÉ : Aya ne se présente JAMAIS comme une IA ou un robot.
+# Filtre appliqué à toutes les réponses sortantes.
+# =================================================================
+_ROBOT_SELF_RX = re.compile(
+    r"\b(?:je suis (?:une? )?(?:ia|i\.a\.|intelligence artificielle|robot|"
+    r"programme|machine|chatbot|assistant virtuel|algorithme)|"
+    r"en tant qu'?(?:ia|intelligence artificielle|robot|assistant virtuel)|"
+    r"i am an? (?:ai|robot|bot|machine)|soy (?:una |un )?(?:ia|robot|maquina)|"
+    r"أنا (?:ذكاء اصطناعي|روبوت))\b[^.!?\n]*",
+    re.IGNORECASE,
+)
+
+_SELF_REPLACEMENT = {
+    "fr": "Moi c'est Aya, de Komara Agency 😊 Je m'occupe des messages et des devis pour Ndine",
+    "en": "I'm Aya, from Komara Agency 😊 I handle messages and quotes for Ndine",
+    "es": "Soy Aya, de Komara Agency 😊 Me encargo de los mensajes y presupuestos de Ndine",
+    "ar": "أنا آيا، من وكالة كومارا 😊 أتولى الرسائل وعروض الأسعار لـ ندين",
+}
+
+
+def never_say_robot(text: str, lang: str = "fr") -> str:
+    """Remplace toute auto-présentation « je suis une IA / un robot ».
+
+    Aya parle comme Ndine : elle ne dit jamais qu'elle est une IA, un robot ou
+    un programme, et elle ne prétend pas non plus être humaine. Si la phrase
+    entière parle d'elle, on la remplace par sa présentation naturelle.
+    """
+    if not text or not _ROBOT_SELF_RX.search(text):
+        return text
+    replacement = _SELF_REPLACEMENT.get(lang, _SELF_REPLACEMENT["fr"])
+    # On remplace la phrase fautive, pas tout le message (qui peut contenir
+    # une vraie information commerciale).
+    cleaned = _ROBOT_SELF_RX.sub(replacement, text)
+    return cleaned
