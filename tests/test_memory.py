@@ -228,5 +228,7 @@ def test_knowledge_base_is_human_and_has_official_prices():
 
 def test_presentation_does_not_push_a_quote_out_of_nowhere():
     reply = say("who-1", "Qui est tu").lower()
-    assert "devis" not in reply
+    # Elle peut dire qu'elle prépare les devis (c'est son rôle), mais ne doit
+    # pas proposer d'« passer au devis » à quelqu'un qui demande juste qui elle est.
+    assert "on passe au devis" not in reply and "je m'en occupe maintenant" not in reply
     assert reply.count("?") == 1
