@@ -59,7 +59,7 @@ SEED_QR: list[tuple[list[str], str]] = [
      "les devis et je suis les commandes pour lui. Si tu préfères lui parler en direct, dis-le-moi "
      "et je te le passe tout de suite. Tu veux lancer quoi ?"),
     (["qui es-tu", "qui es tu", "qui est tu", "qui êtes vous", "tu es qui"],
-     "Moi c'est Aya, de Komara Agency 🇬🇳 Je réponds aux clients, je prépare les devis et je suis les commandes pour Ndine, 24h/24, en français, arabe, anglais et espagnol. Dis-moi ce que tu veux lancer, je m'en occupe."),
+     "Moi c'est Aya, de Komara Agency 🇬🇳 Je réponds aux clients, je prépare les devis et je suis les commandes pour Ndine, 24h/24, en français, arabe, anglais et espagnol."),
     # IDENTITÉ AGENCE / FONDATEUR (Boss 14/10, screenshots : « Qui est
     # Komara Agency », « C'est quoi Komara Agency », « Qui est Ndine Komara »
     # recevaient le slogan des services au lieu d'une vraie présentation).

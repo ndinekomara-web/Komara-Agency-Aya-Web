@@ -101,6 +101,12 @@ def clean_answer(answer: str, question_title: str = "") -> str:
     """Enlève les défauts de forme des fiches brutes."""
     text = answer.strip()
 
+    # Titre court sur la première ligne (« Bots WhatsApp et Telegram »), sans
+    # ponctuation finale : c'est un en-tête de document, pas une phrase.
+    lines = text.split("\n")
+    if len(lines) > 1 and len(lines[0]) <= 48 and not re.search(r"[.!?:]$", lines[0].strip()):
+        text = "\n".join(lines[1:]).lstrip()
+
     # Le titre de la fiche ne doit jamais être recopié en tête de réponse.
     if question_title:
         title = question_title.strip().rstrip("?").strip()
@@ -177,6 +183,10 @@ def reply_returning_greeting(profile: dict[str, Any]) -> str | None:
     name = profile.get("name", "")
     service = profile.get("service", "")
     stage = profile.get("stage", "decouverte")
+    # Rien de retenu (ni prénom, ni projet, ni secteur) : un simple bonjour,
+    # pas un faux « content de te revoir ».
+    if not (name or service or profile.get("sector") or profile.get("phone")):
+        return "Bonjour 😊 Qu'est-ce que je peux faire pour toi ?"
     hello = f"Bonjour {name} 😊" if name else "Bonjour 😊"
     label = _service_label(service)
     if label:
@@ -195,6 +205,8 @@ def reply_returning_greeting(profile: dict[str, Any]) -> str | None:
 def greeting_prefix(profile: dict[str, Any]) -> str:
     """Salue un client qui revient, avec son prénom si on le connaît."""
     if not memory.returning(profile):
+        return ""
+    if not (profile.get("name") or profile.get("service") or profile.get("sector") or profile.get("phone")):
         return ""
     name = profile.get("name", "")
     service = profile.get("service", "")
@@ -278,6 +290,23 @@ def is_price_topic(topic_title: str) -> bool:
     return topic_title.casefold().strip() in _PRICE_TOPICS
 
 
+# Après une présentation, on ne parle PAS de devis : on demande ce que veut le client.
+_TOPIC_FOLLOWUP = {
+    "qui es-tu": "Et toi, c'est quoi ton projet ?",
+    "tu es qui": "Et toi, c'est quoi ton projet ?",
+    "qui est tu": "Et toi, c'est quoi ton projet ?",
+    "qui êtes vous": "Et toi, c'est quoi ton projet ?",
+    "services": "Dis-moi ce qui t'intéresse, je t'explique comment ça marche.",
+    "portfolio": "Tu aimerais quoi pour ton business, dans ce style ?",
+    "bonjour": "Tu as un projet en tête ?",
+    "salut": "Tu as un projet en tête ?",
+}
+
+
+def _topic_followup(topic_title: str) -> str:
+    return _TOPIC_FOLLOWUP.get(topic_title.casefold().strip(), "")
+
+
 def build_reply(
     profile: dict[str, Any],
     topic_key: str,
@@ -307,15 +336,19 @@ def build_reply(
 
     body = clean_answer(answer, topic_title)
 
-    # Fiche déjà donnée : on ne la redit pas, on fait avancer la conversation.
+    # Fiche déjà donnée : le client la redemande, donc on lui répond, plus court,
+    # sans refaire le même texte mot pour mot et sans esquiver sa question.
     if memory.already_said(profile, topic_key) and not _is_core(topic_key):
-        return _already_covered(profile, topic_title)
+        return _repeat_answer(profile, topic_key, topic_title, body)
 
     memory.mark_said(profile, topic_key)
     advance_stage(profile, topic_key)
 
     if not has_question(body):
-        body = f"{body}\n\n{next_question(profile, avoid=profile.get('last_question', ''))}"
+        follow = _topic_followup(topic_title) or next_question(
+            profile, avoid=profile.get("last_question", "")
+        )
+        body = f"{body}\n\n{follow}"
     body = _one_question_only(body)
 
     remember_question(profile, body)
@@ -352,6 +385,25 @@ def _is_core(topic_key: str) -> bool:
     return any(w in key for w in ("merci", "au revoir", "bonjour", "salut", "prix", "tarif", "contact"))
 
 
+_SHORT_REPEAT = {
+    "services": "Je te le redis en bref : des bots WhatsApp et Telegram, des sites web, des logos, "
+                "des affiches, des vidéos et la modération de pages. Lequel t'intéresse ?",
+    "portfolio": "Tu peux les revoir juste au-dessus 😊 Lequel te plaît le plus ?",
+}
+
+
+def _repeat_answer(profile: dict[str, Any], topic_key: str, title: str, body: str) -> str:
+    """Une question reposée reçoit une vraie réponse, reformulée."""
+    key = title.casefold().strip()
+    if key in _SHORT_REPEAT:
+        return _SHORT_REPEAT[key]
+    # Pas de version courte écrite : on redonne la fiche, une seule question en fin.
+    follow = "" if has_question(body) else "\n\n" + next_question(
+        profile, avoid=profile.get("last_question", "")
+    )
+    return _one_question_only(f"{body}{follow}")
+
+
 def _already_covered(profile: dict[str, Any], title: str) -> str:
     """Le client repose un sujet déjà traité : on enchaîne, sans radoter."""
     name = profile.get("name", "")
@@ -379,6 +431,13 @@ def reply_confirmation(profile: dict[str, Any]) -> str | None:
         return f"{hello} {_SERVICE_NEXT.get(service, next_question(profile))}"
     if stage == "offre":
         memory.set_stage(profile, "devis")
+        # Projet déjà clair (service + activité connus) : on ne redemande rien,
+        # on passe au numéro pour que l'équipe envoie le devis.
+        if service and (profile.get("sector") or profile.get("usage")):
+            return (
+                f"{hello} J'ai tout ce qu'il me faut pour ton devis. "
+                "Donne-moi ton numéro WhatsApp et l'équipe te l'envoie rapidement."
+            )
         return f"{hello} Je te prépare le devis. Dis-moi juste ce que tu veux exactement, en une phrase."
     if stage == "devis":
         memory.set_stage(profile, "closing")

@@ -193,3 +193,40 @@ def test_language_is_never_guessed_wrong():
     ):
         payload = client.post("/api/chat", json={"message": text, "session_id": "lang-" + text}).json()
         assert payload["lang"] == expected, (text, payload["lang"])
+
+
+def test_every_way_of_asking_for_services_gets_the_services():
+    """« Service », « Votre service », « Que faite vous » : la même bonne réponse."""
+    for text in ("Services", "Service", "Votre service", "Que faite vous", "Que faites vous",
+                 "ce que vous faites", "vous faites quoi", "vos services"):
+        reply = say("svc-" + text, text).lower()
+        assert "bot" in reply and "site" in reply, (text, reply)
+        assert "pas bien saisi" not in reply, text
+
+
+def test_asking_again_gets_an_answer_not_a_dodge():
+    """Un client qui redemande reçoit une vraie réponse, pas « on en a déjà parlé »."""
+    session = "svc-repeat"
+    say(session, "Services")
+    again = say(session, "Service").lower()
+    assert "déjà parlé" not in again
+    assert "bot" in again and "?" in again
+
+
+def test_knowledge_base_is_human_and_has_official_prices():
+    """Plus de vouvoiement ni de faux prix dans la base de connaissances."""
+    import pathlib
+
+    base = pathlib.Path("knowledge_base")
+    for path in base.rglob("*.md"):
+        text = path.read_text(encoding="utf-8").lower()
+        for bad in ("200 €", "350 €", "400 €", "€200", "€350", "€400", "nous créons", "pour vous même"):
+            assert bad not in text, (str(path), bad)
+    fr = (base / "fr" / "tarifs.md").read_text(encoding="utf-8")
+    assert "250 €" in fr and "100 €" in fr and "50 €" in fr
+
+
+def test_presentation_does_not_push_a_quote_out_of_nowhere():
+    reply = say("who-1", "Qui est tu").lower()
+    assert "devis" not in reply
+    assert reply.count("?") == 1

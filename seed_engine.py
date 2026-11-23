@@ -55,6 +55,18 @@ def _norm(text: str) -> str:
 # Intentions : formulations libres qui pointent vers une fiche existante du seed
 # (on cite la question de la fiche cible, jamais une réponse écrite ici).
 _INTENTS: list[tuple[re.Pattern, str]] = [
+    # « Service », « votre service », « vos services », « que faites vous »,
+    # « que faite vous », « ce que vous faites »... -> la présentation des services.
+    (re.compile(
+        r"^(c est quoi |quels? sont |quel est |montre moi |donne moi |dis moi |parle moi de )?"
+        r"(vos |votre |les |tes |ton |nos |notre )?services?( que vous proposez| proposes?)?$"),
+     "services"),
+    (re.compile(
+        r"^(que|qu est ce que|quest ce que|ce que|et que|alors que|dis moi ce que|dites moi ce que)"
+        r" (tu |vous |t |v )?(fai(?:s|t|tes|te)|propos(?:es|e|ez)|offr(?:es|e|ez|ent)|vend(?:s|ez)?)( vous| tu)?( comme (service|travail|boulot))?$"),
+     "services"),
+    (re.compile(r"^(vous |tu )(fai(?:s|t|tes|te)|propos(?:es|e|ez)) quoi$"), "services"),
+    (re.compile(r"^(c est quoi |qu est ce que c est )?(votre|ton|ta) (activite|activité|metier|métier|travail|boulot)$"), "services"),
     # Question générale sur les prix (sans produit précis) -> la liste des tarifs.
     (re.compile(r"^(quels? (sont|est) )?(vos |votre |les |le )?(tarifs?|prix|couts?)( de vos services| de vos prestations)?$"),
      "prix"),
