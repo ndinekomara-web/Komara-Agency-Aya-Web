@@ -191,5 +191,5 @@ def test_language_is_never_guessed_wrong():
         ("hello", "en"), ("how much for a website", "en"),
         ("cuanto cuesta un sitio", "es"), ("salam", "ar"),
     ):
-        reply = ask(text, session="lang-" + text)
-        assert reply["lang"] == expected, (text, reply["lang"])
+        payload = client.post("/api/chat", json={"message": text, "session_id": "lang-" + text}).json()
+        assert payload["lang"] == expected, (text, payload["lang"])
