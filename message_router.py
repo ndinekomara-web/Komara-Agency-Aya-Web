@@ -3,6 +3,7 @@ Routeur de messages : découpe la logique de _process_text en fonctions modulair
 Chaîne de responsabilité pour traiter les messages dans le bon ordre.
 """
 import re
+import fallback_ia
 import utils
 from utils import clean_text, is_secret_probe, GENERIC_MESSAGES
 from language_detector import detect_language, get_language
@@ -272,7 +273,19 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
         bot_send_func(chat_id, rag_response)
         return True
 
-    # 9. Fallback : message générique
+    # 9. Filet de sécurité IA : question jamais vue -> le modèle (via n8n) répond,
+    #    et n8n range la question dans la feuille « à ajouter au seed ».
+    #    Une réponse hors règles (prix inventé, aveu d'IA, promesse) est jetée.
+    if fallback_ia.est_une_vraie_question(user_text):
+        reponse_ia = fallback_ia.demander(user_text, lang, profile)
+        if reponse_ia:
+            reponse_ia = utils.never_say_robot(reponse_ia, lang)
+            conversation.remember_question(profile, reponse_ia)
+            client_memory.save(str(chat_id), profile)
+            bot_send_func(chat_id, reponse_ia)
+            return True
+
+    # 10. Fallback : message générique
     bot_send_func(chat_id, GENERIC_MESSAGES[lang]["no_understand"])
     return True
 
