@@ -186,7 +186,7 @@ def reply_returning_greeting(profile: dict[str, Any]) -> str | None:
     # Rien de retenu (ni prénom, ni projet, ni secteur) : un simple bonjour,
     # pas un faux « content de te revoir ».
     if not (name or service or profile.get("sector") or profile.get("phone")):
-        return "Bonjour 😊 Qu'est-ce que je peux faire pour toi ?"
+        return "Bonjour 😊 Moi c'est Aya, de Komara Agency. Tu veux lancer quoi : un bot, un site, un logo ?"
     hello = f"Bonjour {name} 😊" if name else "Bonjour 😊"
     label = _service_label(service)
     if label:
@@ -413,11 +413,34 @@ def _already_covered(profile: dict[str, Any], title: str) -> str:
 
 # --------------------------------------------------- confirmation seule
 def reply_confirmation(profile: dict[str, Any]) -> str | None:
-    """« d'accord », « ok » : on réagit à ce qui vient d'être proposé."""
+    """« d'accord », « ok », « oui » : on répond à la question qu'Aya vient de poser."""
     stage = profile.get("stage", "decouverte")
     service = profile.get("service", "")
     name = profile.get("name", "")
     hello = f"Super {name} 🙌" if name else "Super 🙌"
+    asked = (profile.get("last_question") or "").casefold()
+
+    # « Tu veux que je te mette en relation maintenant ? » -> oui = on prend ses coordonnées.
+    if "mette en relation" in asked or "te mette en contact" in asked:
+        profile["last_question"] = ""
+        memory.set_stage(profile, "closing")
+        return (
+            f"{hello} Donne-moi ton prénom et ton numéro WhatsApp, "
+            "et Ndine te contacte directement pour ton projet."
+        )
+
+    # « Tu veux voir nos services ? » / « Tu veux les prix ? » -> oui = on les donne.
+    if "voir nos services" in asked or "tu veux les prix" in asked or "tu veux voir" in asked:
+        profile["last_question"] = ""
+        return (
+            f"{hello} On fait des bots WhatsApp qui vendent à ta place, des sites, des logos et des affiches. "
+            "Qu'est-ce qui t'intéresse le plus pour ton activité ?"
+        )
+
+    # Aucun projet exprimé : « oui » ne doit PAS lancer un script de bot.
+    # On demande d'abord ce que le client veut.
+    if not service and not profile.get("project") and stage in ("decouverte", "besoin"):
+        return f"{hello} Dis-moi ce que tu veux lancer : un bot, un site, un logo ou une affiche ?"
 
     if stage in ("decouverte", "besoin") and service:
         asked = profile.get("last_question", "")
@@ -441,14 +464,31 @@ def reply_confirmation(profile: dict[str, Any]) -> str | None:
         return f"{hello} Je te prépare le devis. Dis-moi juste ce que tu veux exactement, en une phrase."
     if stage == "devis":
         memory.set_stage(profile, "closing")
+        profile["asked_phone"] = 1
         return (
             f"{hello} Pour lancer le projet, c'est 50% au démarrage et 50% à la livraison. "
-            "Laisse-moi ton numéro WhatsApp et l'équipe finalise avec toi."
+            "Laisse-moi ton numéro WhatsApp et Ndine finalise avec toi."
         )
     if stage == "closing":
+        # Numéro déjà reçu : le projet est lancé, on conclut, on ne répète rien.
         if profile.get("phone"):
-            return f"Parfait {name or ''}, l'équipe te contacte très vite sur WhatsApp 🙏".replace("  ", " ")
-        return "Parfait 🙌 Donne-moi ton numéro WhatsApp, et l'équipe te contacte pour démarrer."
+            profile["closed"] = int(profile.get("closed", 0)) + 1
+            if profile["closed"] == 1:
+                who = f" {name}" if name else ""
+                return (
+                    f"Parfait{who}, c'est noté. Ndine te contacte très vite sur WhatsApp 🙏 "
+                    "Tu as autre chose à ajouter pour ton projet ?"
+                )
+            return "Tout est bon de mon côté 🙌 Ndine te contacte très vite. À très vite !"
+        # Numéro pas encore donné : on le redemande UNE fois, autrement, puis on propose une sortie.
+        asks = int(profile.get("asked_phone", 0))
+        profile["asked_phone"] = asks + 1
+        if asks <= 1:
+            return "Parfait 🙌 Il me manque juste ton numéro WhatsApp pour que Ndine te contacte."
+        return (
+            "Pas de souci 😊 Tu peux aussi écrire directement à Ndine quand tu veux, "
+            "ou me laisser ton numéro plus tard, je garde ton projet."
+        )
     return None
 
 
@@ -553,8 +593,11 @@ class _Prices(dict):
 
     def get(self, key, default=None):
         builders = {
-            "chatbot": lambda: "Selon le niveau, un bot va de 50 € à 150 €.",
-            "site": lambda: f"Un site vitrine, c'est {_price('SITE', '50 €')}, livré en 7 jours.",
+            "chatbot": lambda: (
+                f"Le bot WhatsApp vendeur, c'est {_price('BOT_WHATSAPP', '100 €')}, "
+                "avec les devis, les relances et le paiement."
+            ),
+            "site": lambda: f"Un site vitrine, c'est {_price('SITE', '250 €')}, livré en 7 jours.",
             "logo": lambda: f"Un logo, c'est {_price('LOGO', '50 €')}, livré en 24h.",
             "affiche": lambda: f"Une affiche, c'est {_price('AFFICHE', '30 €')}, en 24 à 48h.",
             "retouche": lambda: f"Une retouche photo, c'est {_price('RETOUCHE', '10 €')}.",
@@ -595,7 +638,7 @@ def _generic_price_answer(profile: dict[str, Any]) -> str:
         return "Je t'ai donné le tarif juste avant 😊 Pour le devis exact, tu me donnes ton numéro WhatsApp ?"
     return (
         f"Ça dépend de ce que tu veux : logo {_price('LOGO', '50 €')}, affiche {_price('AFFICHE', '30 €')}, "
-        f"site vitrine {_price('SITE', '50 €')}, bot à partir de 50 €. "
+        f"site vitrine {_price('SITE', '250 €')}, bot WhatsApp {_price('BOT_WHATSAPP', '100 €')}. "
         "C'est pour quel projet, que je te donne le prix exact ?"
     )
 
@@ -718,18 +761,75 @@ def reply_to_last_question(profile: dict[str, Any], text: str) -> str | None:
             "donc on te fait un devis gratuit. Ton numéro WhatsApp pour te l'envoyer ?"
         )
 
-    # « Tu fais quoi comme activité ? » : la réponse est un secteur ou une activité.
+    # « Tu fais quoi comme activité ? » : on reprend SES mots, on propose l'offre adaptée,
+    # puis seulement on demande le numéro (offre -> devis -> closing).
     if "activité" in asked or "quel type de business" in asked:
-        if profile.get("sector") or len(low.split()) <= 8:
+        if profile.get("sector") or len(low.split()) <= 10:
             memory.set_stage(profile, "devis")
             profile["last_question"] = ""
             profile["open_question"] = ""
-            where = f" ({profile['sector']})" if profile.get("sector") else ""
+            sector = profile.get("sector", "")
+            about = _activity_phrase(text, sector)
+            offer = _offer_for(profile)
             return (
-                f"{thanks}, c'est noté{where} 👍 Pour te faire le devis exact, "
-                "laisse-moi ton numéro WhatsApp : l'équipe te l'envoie rapidement."
-            )
+                f"{thanks} 👌 {about}{offer} "
+                "Je te prépare le devis gratuit : laisse-moi ton numéro WhatsApp et Ndine te l'envoie."
+            ).replace("  ", " ")
     return None
+
+
+def _to_second_person(text: str) -> str:
+    text = re.sub(r"\bmon\b", "ton", text, flags=re.I)
+    text = re.sub(r"\bma\b", "ta", text, flags=re.I)
+    text = re.sub(r"\bmes\b", "tes", text, flags=re.I)
+    text = re.sub(r"\bj['’]ai\b", "tu as", text, flags=re.I)
+    text = re.sub(r"\bje\s+suis\b", "tu es", text, flags=re.I)
+    return text
+
+
+def _activity_phrase(text: str, sector: str) -> str:
+    """Reprend l'activité du client avec ses mots, à la 2e personne, sans phrase bancale."""
+    clean = text.strip(" .!?,;")
+    low = clean.casefold()
+
+    # « je crée / je vends / je fais / je gère X » -> « tu crées / vends / fais / gères X »
+    verbs = {"crée": "crées", "cree": "crées", "vends": "vends", "vend": "vends", "fais": "fais",
+             "gère": "gères", "gere": "gères", "tiens": "tiens", "propose": "proposes",
+             "produis": "produis", "organise": "organises", "propose": "proposes"}
+    m = re.match(r"^je\s+(" + "|".join(verbs) + r")\s+(.+)$", clean, flags=re.I)
+    if m and len(m.group(2).split()) <= 7:
+        return f"Tu {verbs[m.group(1).casefold()]} {_to_second_person(m.group(2))}, c'est noté. "
+
+    # « j'ai un salon / une boutique / mon restaurant » -> « tu as un salon »
+    m = re.match(r"^j['’]ai\s+(.+)$", clean, flags=re.I)
+    if m and len(m.group(1).split()) <= 7:
+        return f"Tu as {_to_second_person(m.group(1))}, c'est noté. "
+
+    # « je suis coiffeuse / dans la mode » -> « tu es coiffeuse / dans la mode »
+    m = re.match(r"^je\s+suis\s+(.+)$", clean, flags=re.I)
+    if m and len(m.group(1).split()) <= 6:
+        return f"Tu es {_to_second_person(m.group(1))}, c'est noté. "
+
+    # Réponse courte (« la mode », « coach sportif », « restaurant »)
+    if 0 < len(clean.split()) <= 4:
+        return f"{_to_second_person(clean).capitalize()}, c'est noté. "
+    return f"Une activité dans {sector}, c'est noté. " if sector else ""
+
+
+def _offer_for(profile: dict[str, Any]) -> str:
+    """L'offre qui correspond au service choisi, avec son vrai prix."""
+    service = profile.get("service", "")
+    usage = profile.get("usage", "")
+    if service == "chatbot":
+        what = {
+            "vendre": "un bot WhatsApp qui présente tes produits et prend les commandes à ta place",
+            "répondre": "un bot WhatsApp qui répond à tes clients 24h/24",
+            "rendez-vous": "un bot WhatsApp qui prend et confirme tes rendez-vous",
+        }.get(usage, "un bot WhatsApp qui travaille pour toi")
+        return f"Pour toi, ce serait {what}. {_PRICE_HINT.get('chatbot', '')}"
+    if service in _PRICE_HINT:
+        return _PRICE_HINT[service]
+    return ""
 
 
 _OWN_QUESTION = re.compile(
@@ -865,7 +965,4 @@ def wellbeing_reply(text: str, profile: dict, lang: str = "fr") -> str | None:
             f"Ça va bien{who}, merci 😊 Content que tu repasses.\n\n"
             f"On avance sur ton projet {label} ? Dis-moi où tu en es."
         )
-    return (
-        f"Ça va très bien{who}, merci 😊 Et ton business, ça tourne ?\n\n"
-        "Dis-moi ce que tu veux lancer, je m'occupe du reste."
-    )
+    return f"Ça va très bien{who}, merci 😊 Et toi ? Dis-moi ce que tu veux lancer, je m'occupe du reste."

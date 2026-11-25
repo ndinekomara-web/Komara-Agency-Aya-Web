@@ -318,3 +318,107 @@ def test_uploaded_html_never_runs_in_the_page():
     reply = client.get(trap["url"])
     assert reply.headers["content-disposition"].startswith("attachment")
     assert reply.headers["x-content-type-options"] == "nosniff"
+
+
+# ------------------------------------------------- vidéos du 25/11 : parcours jusqu'au closing
+def _journey(session, messages):
+    return [say(session, m) for m in messages]
+
+
+def test_politeness_is_never_answered_with_the_phone_number():
+    """« Comment vous allez » reçoit une réponse polie, pas le numéro WhatsApp."""
+    for text in ("Comment vous allez", "Comment allez-vous", "Comment tu vas", "ça va"):
+        reply = say("polite-" + text, text)
+        assert "+212" not in reply and "WhatsApp direct" not in reply, (text, reply)
+        assert reply.lower().count("dis-moi") <= 1, reply
+
+
+def test_yes_answers_the_last_question_not_a_bot_script():
+    """« Oui » à « on te met en relation ? » demande les coordonnées, rien d'autre."""
+    session = "yes-contact"
+    say(session, "Contact")
+    reply = say(session, "Oui").lower()
+    assert "numéro" in reply and "nom de ta page" not in reply
+
+
+def test_a_client_with_no_project_is_asked_what_he_wants():
+    session = "yes-noproject"
+    say(session, "Bonjour")
+    say(session, "Comment vous allez")
+    reply = say(session, "oui").lower()
+    assert "nom de ta page" not in reply
+    assert "bot" in reply and "site" in reply
+
+
+def test_bot_price_is_precise_never_a_vague_range():
+    """Plus de « un bot va de 50 € à 150 € » : le prix du bot choisi."""
+    replies = _journey("price-bot", ["Je souhaite créer un bot", "Vendre"])
+    assert "50 € à 150 €" not in replies[1]
+    assert "100 €" in replies[1]
+
+
+def test_site_price_is_never_50_euros():
+    replies = _journey("price-site", ["je veux un site", "vitrine"])
+    import re
+
+    assert "250 €" in replies[1]
+    assert not re.search(r"(?<!\d)50 €, livré", replies[1])
+
+
+def test_activity_is_understood_and_repeated_back_before_asking_the_number():
+    """« Je crée des digitaux » : Aya comprend, propose l'offre, PUIS demande le numéro."""
+    replies = _journey("activity-1", ["Je souhaite créer un bot", "Vendre", "Je crée des digitaux"])
+    last = replies[-1].lower()
+    assert "tu crées des digitaux" in last
+    assert "100 €" in last and "numéro" in last
+
+
+def test_full_journey_to_closing_without_looping():
+    """Découverte -> besoin -> offre -> devis -> closing, sans répétition."""
+    session = "closing-1"
+    replies = _journey(session, [
+        "Bonjour", "Comment tu vas", "Je souhaite créer un bot", "Vendre",
+        "Je crée des digitaux", "Ok", "620123456", "Ok", "Ok",
+    ])
+    assert not any("pas bien saisi" in r.lower() for r in replies)
+    assert "tel" not in replies[-1] and "numéro whatsapp et ndine finalise" not in replies[-1].lower()
+    # Après le numéro, deux « Ok » successifs ne donnent jamais la même phrase.
+    assert replies[-1] != replies[-2]
+    import client_memory
+
+    profile = client_memory.get(session)
+    assert profile["stage"] == "closing" and profile["phone"]
+
+
+def test_repeated_ok_does_not_ask_for_the_number_forever():
+    session = "ok-loop"
+    _journey(session, ["Je souhaite créer un bot", "Vendre", "Je crée des digitaux"])
+    answers = [say(session, "Ok") for _ in range(4)]
+    assert len(set(answers)) >= 3, answers
+
+
+def test_team_number_is_never_saved_as_a_client(monkeypatch):
+    """Si on donne le numéro de l'équipe, on demande le vrai numéro du client."""
+    monkeypatch.setenv("KOMARA_WHATSAPP", "+212 600 111 222")
+    session = "team-number"
+    _journey(session, ["Je souhaite créer un bot", "Vendre", "Je crée des digitaux", "Ok"])
+    reply = say(session, "+212600111222").lower()
+    assert "équipe" in reply and "propre numéro" in reply
+    import client_memory
+
+    assert not client_memory.get(session).get("phone")
+
+
+def test_same_number_twice_is_not_saved_twice():
+    session = "same-number"
+    _journey(session, ["Je souhaite créer un bot", "Vendre", "Je crée des digitaux", "Ok"])
+    say(session, "620998877")
+    assert "déjà noté" in say(session, "620998877").lower()
+
+
+def test_activities_are_rephrased_in_second_person():
+    import conversation
+
+    assert conversation._activity_phrase("Je crée des digitaux", "").startswith("Tu crées des digitaux")
+    assert conversation._activity_phrase("J'ai un salon de coiffure", "").startswith("Tu as un salon de coiffure")
+    assert "Conakry" in conversation._activity_phrase("J'ai mon restaurant à Conakry", "")

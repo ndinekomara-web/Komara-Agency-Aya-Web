@@ -55,6 +55,14 @@ _SECTORS = {
     "école": ("école", "ecole", "formation", "cours"),
     "santé": ("clinique", "pharmacie", "cabinet", "santé", "sante"),
     "transport": ("transport", "taxi", "livraison", "logistique"),
+    "produits digitaux": ("digitaux", "digital", "digitale", "produits numériques", "produits numeriques",
+                          "ebook", "e-book", "formation en ligne", "infoproduit", "template", "templates"),
+    "création de contenu": ("contenu", "influenceur", "influenceuse", "youtubeur", "tiktokeur", "créateur", "createur", "créatrice"),
+    "freelance": ("freelance", "indépendant", "independant", "consultant", "coach", "coaching"),
+    "événementiel": ("événement", "evenement", "mariage", "dj", "décoration", "decoration", "organisation"),
+    "agriculture": ("agriculture", "agricole", "ferme", "élevage", "elevage", "culture", "récolte"),
+    "mode": ("mode", "couture", "couturier", "styliste", "tissu", "wax", "bijoux", "sacs"),
+    "services": ("agence", "service", "prestation", "entreprise", "société", "societe"),
 }
 # Présentation explicite : seule source fiable d'un prénom.
 _PHONE_RX = re.compile(r"(?:\+?\d[\d .-]{7,}\d)")

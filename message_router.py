@@ -44,6 +44,19 @@ def _is_cancel(text: str) -> bool:
 _PHONE_RX = re.compile(r"(?:\+|00)?\d[\d\s.\-]{6,}\d")
 
 
+def _digits(value: str) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
+def _is_team_number(phone: str) -> bool:
+    """Vrai si le numéro est celui de l'équipe (lu dans KOMARA_WHATSAPP)."""
+    import os
+
+    team = _digits(os.getenv("KOMARA_WHATSAPP", ""))
+    given = _digits(phone)
+    return bool(team) and len(given) >= 8 and (given == team or given.endswith(team[-9:]))
+
+
 def _looks_like_phone(text: str) -> bool:
     """Un numéro dans un message court (« mon numero est 620123456 »)."""
     stripped = text.strip()
@@ -122,6 +135,21 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
         valid, _reason = phone_validation.check(text)
         if valid:
             phone = phone_validation.normalize(text)
+            # C'est le numéro de l'équipe Komara : un client ne le donne jamais pour lui.
+            # On ne l'enregistre pas comme un lead, on demande SON numéro.
+            if _is_team_number(phone):
+                profile["phone"] = before.get("phone", "")
+                return reply(
+                    "Ce numéro, c'est celui de l'équipe Komara 😊 "
+                    "Donne-moi ton propre numéro WhatsApp, pour que Ndine puisse te contacter."
+                )
+            # Même numéro déjà enregistré dans cette conversation : on ne le redemande pas.
+            # (on compare avec le numéro d'AVANT ce message : la mémoire vient de l'enregistrer)
+            if before.get("phone") and _digits(before["phone"]) == _digits(phone):
+                return reply(
+                    "C'est déjà noté 👍 Ndine te contacte très vite. "
+                    "Si tu as autre chose à ajouter pour ton projet, dis-moi."
+                )
             chat_store.add_lead(chat_id, phone, text)
             try:
                 import notify
@@ -178,7 +206,7 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
         return reply(link_reply)
 
     # 3d-ter. Simple confirmation (« d'accord », « ok ») : on réagit à ce qui précède.
-    if lang == "fr" and conversation.is_confirmation(text) and profile.get("turns", 0) > 1:
+    if lang == "fr" and conversation.is_confirmation(text) and profile.get("turns", 0) >= 1:
         confirmed = conversation.reply_confirmation(profile)
         if confirmed:
             return reply(confirmed)
