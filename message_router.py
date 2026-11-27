@@ -4,6 +4,10 @@ Chaîne de responsabilité pour traiter les messages dans le bon ordre.
 """
 import re
 import appointments
+import brain_local
+import files_kind
+import images_ia
+import opening_hours
 import fallback_ia
 import followups
 import sales_guard
@@ -230,6 +234,38 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
     if not sales_guard.ventes_directes() and sales_guard.is_purchase(text):
         return reply(sales_guard.redirect_reply(profile, lang))
 
+    # 3e. Hors horaires (08h-23h) : on note, on ne prend aucune commande.
+    if not sales_guard.ventes_directes() and not opening_hours.is_open() and _est_demande_commerciale(user_text):
+        profil_service = (profile or {}).get("service", "")
+        chat_store.add_alert("hors_horaires", f"Demande hors horaires : {user_text[:80]}",
+                             f"Service : {profil_service or 'à préciser'}")
+        bot_send_func(chat_id, opening_hours.closed_reply(lang, profil_service))
+        return True
+
+    # 3f. Le client envoie un lien : on l'accueille, sans inventer ce qu'il contient.
+    if files_kind.is_link(user_text):
+        lien = files_kind.first_link(user_text)
+        bot_send_func(chat_id, (
+            f"J'ai bien ton lien 📎 {lien}\n\n"
+            "Dis-moi ce que je dois en faire : m'en inspirer pour un visuel, reprendre le contenu sur ton site, "
+            "ou le garder pour ton dossier ?"
+        ))
+        return True
+
+    # 3g. Génération d'image gratuite (Pollinations, sans clé) si le client le demande.
+    if images_ia.disponible() and _demande_image(user_text):
+        service = brain_local.service_demande(user_text) or "logo"
+        resultat = images_ia.generer(user_text, (profile or {}).get("sector", ""), service)
+        if resultat:
+            upload_id, nom = resultat
+            bot_send_func(chat_id, (
+                f"Voilà une première piste pour {service} 🎨\n\n"
+                "C'est une proposition de départ, pas le visuel final : on l'ajuste avec toi "
+                "(couleurs, texte, style). Tu veux qu'on parte là-dessus ?"
+            ))
+            bot_send_func(chat_id, f"[[file:{upload_id}:img:{nom}]]")
+            return True
+
     # 4c. Commande guidée en cours (panier -> nom -> livraison -> confirmation)
     if checkout.in_checkout(chat_id):
         order_reply = checkout.step(chat_id, text, lang)
@@ -389,3 +425,28 @@ def handle_greeting(text: str, lang: str) -> str | None:
             return GENERIC_MESSAGES[lang]["greeting"]
 
     return None
+
+
+# ---------------------------------------------------------------- détecteurs
+# Seulement ce qui engage une vente. Une question de prix reste une question :
+# on y répond même fermé, sinon le client part chez le concurrent.
+_COMMERCIAL = (
+    "commander", "commande", "acheter", "achat", "panier", "payer", "paiement", "acompte",
+    "rendez-vous", "rendez vous", "rdv", "réserv", "reserv",
+)
+
+
+def _est_demande_commerciale(text: str) -> bool:
+    """Une demande qui engage une vente : hors horaires, elle attend l'ouverture."""
+    t = (text or "").casefold()
+    return any(w in t for w in _COMMERCIAL)
+
+
+_VERBES_IMAGE = ("fais", "fait", "fais-moi", "genere", "génère", "cree", "crée", "dessine", "imagine")
+_MOTS_IMAGE = ("logo", "affiche", "visuel", "flyer", "poster", "banniere", "bannière")
+
+
+def _demande_image(text: str) -> bool:
+    """Le client demande explicitement de CRÉER un visuel, pas d'en connaître le prix."""
+    t = (text or "").casefold()
+    return any(v in t for v in _VERBES_IMAGE) and any(m in t for m in _MOTS_IMAGE)

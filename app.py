@@ -45,6 +45,7 @@ from message_router import handle_greeting, route_message
 import appointments
 import backup
 import extras
+import files_kind
 import scheduler
 import tracking
 import utils
@@ -422,12 +423,9 @@ async def upload(file: UploadFile = File(...), session_id: str = "") -> dict:
     notify.file_received(session, file.filename or "fichier")
 
     lang = get_language(session)
-    reply = {
-        "fr": "Bien reçu 📎 Ndine le voit directement dans son espace. Dis-moi ce que tu veux qu'on en fasse : logo, affiche, site ou bot ?",
-        "en": "Got it 📎 Ndine can see it right in his space. Tell me what you want to do with it: logo, poster, website or bot?",
-        "es": "Recibido 📎 Ndine lo ve directamente en su espacio. ¿Qué quieres hacer: logo, cartel, sitio o bot?",
-        "ar": "تم الاستلام 📎 ندين يراه مباشرة في مساحته. ماذا تريد: شعار، ملصق، موقع أو بوت؟",
-    }.get(lang, "Bien reçu 📎 Ndine le voit directement dans son espace.")
+    # Réponse adaptée au type RÉEL du fichier (image, PDF, tableau, doc, audio).
+    genre = files_kind.classify(file.filename or "", file.content_type or "")
+    reply = files_kind.ack(genre, file.filename or "")
     # Le message du client garde un lien vers SON fichier : l'image s'affiche
     # dans la bulle, et revient après rechargement de la page.
     is_image = (file.content_type or "").startswith("image/")

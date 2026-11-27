@@ -12,7 +12,7 @@ import chat_store
 import extras
 
 DUREE = 30  # minutes
-HEURES = (9, 10, 11, 12, 14, 15, 16, 17)
+HEURES = (8, 13, 18, 22)  # 4 créneaux, 08h à 23h
 JOURS = 10
 
 
@@ -45,7 +45,7 @@ def slots(jours: int = JOURS) -> list[str]:
     for _ in range(jours * 2):
         if len(libres) >= jours * 3:
             break
-        if jour.weekday() < 6:  # dimanche fermé
+        if True:  # ouvert 7j/7, 4 créneaux par jour
             for heure in HEURES:
                 debut = dt.datetime(jour.year, jour.month, jour.day, heure, 0, tzinfo=_tz())
                 if debut <= maintenant + dt.timedelta(hours=2):

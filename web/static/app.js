@@ -423,6 +423,31 @@
     }
   }
 
+
+  /* ---------- transcription gratuite (Web Speech API, zéro API, zéro coût) ---------- */
+  function transcrire(blob) {
+    return new Promise((resolve) => {
+      const Reco = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Reco) { resolve(""); return; }
+      try {
+        const rec = new Reco();
+        rec.lang = (localStorage.getItem("aya_lang") || "fr") === "ar" ? "ar-MA" : "fr-FR";
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+        let fini = false;
+        const finir = (texte) => { if (!fini) { fini = true; resolve((texte || "").trim()); } };
+        rec.onresult = (e) => finir(e.results?.[0]?.[0]?.transcript || "");
+        rec.onerror = () => finir("");
+        rec.onend = () => finir("");
+        setTimeout(() => finir(""), 12000);
+        // Le navigateur transcrit ce qu'il entend pendant qu'on rejoue l'audio.
+        const audio = new Audio(URL.createObjectURL(blob));
+        audio.play().catch(() => {});
+        rec.start();
+      } catch { resolve(""); }
+    });
+  }
+
   async function envoyerVocal(blob, duree) {
     const form = new FormData();
     form.append("file", new File([blob], `vocal-${duree}s.webm`, { type: "audio/webm" }));
@@ -437,7 +462,13 @@
       const data = await reponse.json();
       const lien = bulle && bulle.querySelector("audio");
       if (lien && data.url) lien.src = data.url;
-      if (data.reply) addMessage("assistant", data.reply);
+      const dit = await transcrire(blob);
+      if (dit) {
+        addMessage("user", dit);
+        await send(dit);
+      } else if (data.reply) {
+        addMessage("assistant", data.reply);
+      }
     } catch {
       toast("Le vocal n'est pas parti. Réessaie.");
     }
