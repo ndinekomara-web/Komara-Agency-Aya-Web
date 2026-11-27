@@ -42,6 +42,11 @@ from config import (
 )
 from language_detector import change_language, detect_language, get_language
 from message_router import handle_greeting, route_message
+import appointments
+import backup
+import extras
+import scheduler
+import tracking
 import utils
 from utils import GENERIC_MESSAGES
 
@@ -103,6 +108,7 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     session_id: str | None = Field(default=None, max_length=80)
     lang: str | None = None
+    reply_to: dict | None = None  # {author, excerpt} quand le client répond à un message
 
 
 class SessionRequest(BaseModel):
@@ -193,6 +199,16 @@ def _answer(session_id: str, text: str, is_new_session: bool = False) -> dict:
 # ---------------------------------------------------------------------------
 # Routes API
 # ---------------------------------------------------------------------------
+@app.on_event("startup")
+async def _demarrer_taches() -> None:
+    """Relances + sauvegarde quotidienne, en tâche de fond, sans bloquer le site."""
+    try:
+        extras.init()
+        scheduler.demarrer()
+    except Exception:
+        logger.exception("tâches de fond non démarrées")
+
+
 @app.get("/api/health")
 def health() -> dict:
     return {
@@ -240,7 +256,14 @@ async def chat(payload: ChatRequest) -> dict:
 
     is_new_session = not chat_store.history(session_id, limit=1)
     chat_store.touch_session(session_id, payload.lang)
-    chat_store.add_message(session_id, "user", text, payload.lang)
+    # Réponse à un message : on garde la citation pour l'affichage, jamais dans l'analyse.
+    cite = ""
+    if payload.reply_to:
+        auteur = str(payload.reply_to.get("author", ""))[:20].replace("]", "")
+        extrait = str(payload.reply_to.get("excerpt", ""))[:80].replace("]", "")
+        if extrait:
+            cite = f"[[cite:{auteur}:{extrait}]]\n"
+    chat_store.add_message(session_id, "user", cite + text, payload.lang)
 
     started = time.monotonic()
     try:
@@ -408,13 +431,16 @@ async def upload(file: UploadFile = File(...), session_id: str = "") -> dict:
     # Le message du client garde un lien vers SON fichier : l'image s'affiche
     # dans la bulle, et revient après rechargement de la page.
     is_image = (file.content_type or "").startswith("image/")
-    marker = f"[[file:{upload_id}:{'img' if is_image else 'doc'}:{file.filename or 'fichier'}]]"
+    is_audio = (file.content_type or "").startswith("audio/")
+    kind = "img" if is_image else ("aud" if is_audio else "doc")
+    marker = f"[[file:{upload_id}:{kind}:{file.filename or 'fichier'}]]"
     chat_store.add_message(session, "user", marker, lang)
     chat_store.add_message(session, "assistant", reply, lang)
     return {
         "id": upload_id,
         "filename": file.filename,
         "is_image": is_image,
+        "is_audio": is_audio,
         "url": f"/api/upload/{upload_id}?session_id={session}",
         "reply": reply,
         "session_id": session,
@@ -464,6 +490,42 @@ def admin_upload(upload_id: int):
         content=row["data"],
         media_type=row.get("content_type") or "application/octet-stream",
         headers={"Content-Disposition": f'inline; filename="{row["filename"]}"'},
+    )
+
+
+@app.get("/api/admin/appointments", dependencies=[Depends(require_admin)])
+def admin_rdv(limit: int = 50) -> dict:
+    items = appointments.liste(max(1, min(limit, 200)))
+    for item in items:
+        item["human"] = appointments.lisible(str(item.get("slot_iso", "")))
+    return {"appointments": items}
+
+
+@app.post("/api/admin/appointments/{rdv_id}/status", dependencies=[Depends(require_admin)])
+def admin_rdv_statut(rdv_id: int, payload: dict) -> dict:
+    statut = str(payload.get("status", "")).strip() or "confirme"
+    return {"ok": appointments.changer_statut(rdv_id, statut)}
+
+
+@app.get("/api/admin/backups", dependencies=[Depends(require_admin)])
+def admin_backups() -> dict:
+    return {"backups": backup.liste(10)}
+
+
+@app.post("/api/admin/backup", dependencies=[Depends(require_admin)])
+def admin_backup_now() -> dict:
+    return backup.run(force=True)
+
+
+@app.get("/api/admin/backup/latest", dependencies=[Depends(require_admin)])
+def admin_backup_latest():
+    row = backup.dernier()
+    if not row:
+        raise HTTPException(status_code=404, detail="Aucune sauvegarde.")
+    return Response(
+        content=bytes(row["data"]),
+        media_type="application/gzip",
+        headers={"Content-Disposition": 'attachment; filename="komara-backup.json.gz"'},
     )
 
 
@@ -544,6 +606,47 @@ def list_leads(limit: int = 50) -> dict:
     """Numéros laissés par les clients (réservé à l'équipe)."""
     limit = max(1, min(limit, 200))
     return {"leads": chat_store.leads(limit)}
+
+
+@app.get("/api/appointments/slots", dependencies=[Depends(require_access)])
+def rdv_slots() -> dict:
+    return {"slots": [{"iso": s, "human": appointments.lisible(s)} for s in appointments.slots()]}
+
+
+@app.post("/api/appointments", dependencies=[Depends(require_access)])
+def rdv_creer(payload: dict) -> dict:
+    session = str(payload.get("session_id", "")) or "anonyme"
+    slot = str(payload.get("slot", ""))
+    if not slot or slot not in appointments.slots():
+        raise HTTPException(status_code=400, detail="Créneau indisponible.")
+    profile = client_memory.get(session)
+    return appointments.reserver(session, slot, profile)
+
+
+@app.get("/api/track", dependencies=[Depends(require_access)])
+def suivi(reference: str = "", phone: str = "") -> dict:
+    return {"reply": tracking.reponse(reference, phone)}
+
+
+@app.get("/api/quotes/{quote_id}/devis.pdf", dependencies=[Depends(require_access)])
+def quote_pdf_client(quote_id: int, session_id: str = ""):
+    """Le client télécharge SON devis, sans accès admin."""
+    rows = [q for q in chat_store.quotes(500) if int(q["id"]) == quote_id]
+    if not rows or str(rows[0].get("session_id")) != str(session_id):
+        raise HTTPException(status_code=404, detail="Devis introuvable.")
+    quote = rows[0]
+    pdf = invoices.build_quote_pdf(
+        reference=f"AYA-{quote_id:05d}",
+        service=quote.get("service", ""),
+        budget=quote.get("budget", ""),
+        created_at=quote.get("created_at"),
+        contact=os.getenv("KOMARA_WHATSAPP", "").strip(),
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="devis-AYA-{quote_id:05d}.pdf"'},
+    )
 
 
 @app.get("/api/quotes", dependencies=[Depends(require_access)])

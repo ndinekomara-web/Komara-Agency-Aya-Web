@@ -30,6 +30,8 @@
     actAdmin: $("#act-admin"),
     toast: $("#toast"),
     attach: $("#attach"),
+    mic: $("#mic"),
+    composer: $("#composer"),
     file: $("#file"),
     actContact: $("#act-contact"),
     actSearch: $("#act-search"),
@@ -96,7 +98,8 @@
 
   // Rendu sûr : on échappe le HTML, puis on met en gras le *texte* (comme
   // WhatsApp) et on garde les retours à la ligne.
-  const FILE_MARK = /^\[\[file:(\d+):(img|doc):([^\]]*)\]\]$/;
+  const FILE_MARK = /^\[\[file:(\d+):(img|doc|aud):([^\]]*)\]\]$/;
+  const CITE_MARK = /^\[\[cite:([^:]*):([^\]]*)\]\]\n?/;
 
   function fileUrl(id) {
     return `/api/upload/${id}?session_id=${encodeURIComponent(sessionId)}`;
@@ -110,6 +113,10 @@
   function renderFile(match) {
     const [, id, kind, name] = match;
     const safeName = escapeHtml(name);
+    if (kind === "aud") {
+      // Message vocal : lecteur natif, comme WhatsApp
+      return `<div class="voice"><audio controls preload="metadata" src="${fileUrl(id)}"></audio></div>`;
+    }
     if (kind === "img") {
       return `<a class="shot" href="${fileUrl(id)}" target="_blank" rel="noopener"><img src="${fileUrl(id)}" alt="${safeName}" loading="lazy"></a>`;
     }
@@ -117,13 +124,20 @@
   }
 
   function renderText(text) {
-    const fileMatch = String(text).trim().match(FILE_MARK);
-    if (fileMatch) return renderFile(fileMatch);
-    const escaped = String(text)
+    let reste = String(text);
+    let cite = "";
+    const citeMatch = reste.match(CITE_MARK);
+    if (citeMatch) {
+      cite = `<span class="cite"><b>${escapeHtml(citeMatch[1] || "Message")}</b> ${escapeHtml(citeMatch[2])}</span>`;
+      reste = reste.replace(CITE_MARK, "");
+    }
+    const fileMatch = reste.trim().match(FILE_MARK);
+    if (fileMatch) return cite + renderFile(fileMatch);
+    const escaped = String(reste)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
-    return escaped
+    return cite + escaped
       .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
       .replace(/\n/g, "<br>");
   }
@@ -158,6 +172,7 @@
     bubble.addEventListener("touchmove", () => clearTimeout(pressTimer));
     row.appendChild(bubble);
     els.thread.appendChild(row);
+    activerGlissement(bubble);
     scrollDown();
     return bubble;
   }
@@ -223,12 +238,18 @@
     els.send.disabled = true;
     els.input.value = "";
     els.input.style.height = "auto";
+    const cite = reponseA ? { author: reponseA.auteur, excerpt: reponseA.extrait } : null;
     addMessage("user", message);
+    if (reponseA) {
+      const bar = document.getElementById("reply-bar");
+      if (bar) bar.remove();
+      reponseA = null;
+    }
     addTyping();
     try {
       const data = await api("/api/chat", {
         method: "POST",
-        body: JSON.stringify({ message, session_id: sessionId || undefined }),
+        body: JSON.stringify({ message, session_id: sessionId || undefined, reply_to: cite }),
       });
       removeTyping();
       if (data.session_id) {
@@ -336,7 +357,94 @@
     }
   }
 
+  /* ---------------- glisser un message pour y répondre (comme WhatsApp) ---------------- */
+  let reponseA = null;
+
+  function afficherReponse(auteur, extrait) {
+    reponseA = { auteur, extrait };
+    let bar = document.getElementById("reply-bar");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "reply-bar";
+      bar.className = "reply-bar";
+      els.composer.insertBefore(bar, els.composer.firstChild);
+    }
+    bar.innerHTML = `<span><b>${escapeHtml(auteur)}</b> ${escapeHtml(extrait)}</span><button type="button" aria-label="Annuler la réponse">✕</button>`;
+    bar.querySelector("button").addEventListener("click", () => { reponseA = null; bar.remove(); });
+    els.input.focus();
+  }
+
+  function activerGlissement(bulle) {
+    let debutX = 0, actif = false;
+    bulle.addEventListener("pointerdown", (e) => { debutX = e.clientX; actif = true; });
+    bulle.addEventListener("pointerup", (e) => {
+      if (!actif) return;
+      actif = false;
+      if (e.clientX - debutX > 60) {
+        const texte = bulle.textContent.replace(/\s+/g, " ").trim();
+        const auteur = bulle.closest(".msg").classList.contains("user") ? "Toi" : "Aya";
+        afficherReponse(auteur, texte.slice(0, 60));
+      }
+    });
+  }
+
   els.attach.addEventListener("click", () => els.file.click());
+  /* ---------------- message vocal ---------------- */
+  let enregistreur = null, morceaux = [], debutEnregistrement = 0;
+
+  async function basculerVocal() {
+    if (enregistreur && enregistreur.state === "recording") {
+      enregistreur.stop();
+      return;
+    }
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      toast("Ton navigateur ne permet pas le vocal. Écris ton message.");
+      return;
+    }
+    try {
+      const flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      enregistreur = new MediaRecorder(flux);
+      morceaux = [];
+      enregistreur.ondataavailable = (e) => { if (e.data.size) morceaux.push(e.data); };
+      enregistreur.onstop = async () => {
+        flux.getTracks().forEach((t) => t.stop());
+        els.mic.classList.remove("recording");
+        const duree = Math.round((Date.now() - debutEnregistrement) / 1000);
+        if (duree < 1) { toast("Trop court, réessaie."); return; }
+        const blob = new Blob(morceaux, { type: "audio/webm" });
+        await envoyerVocal(blob, duree);
+      };
+      debutEnregistrement = Date.now();
+      enregistreur.start();
+      els.mic.classList.add("recording");
+      toast("Enregistrement… appuie encore pour envoyer");
+    } catch {
+      toast("Micro refusé. Autorise le micro dans ton navigateur.");
+    }
+  }
+
+  async function envoyerVocal(blob, duree) {
+    const form = new FormData();
+    form.append("file", new File([blob], `vocal-${duree}s.webm`, { type: "audio/webm" }));
+    form.append("session_id", sessionId);
+    const bulle = addMessage("user", "");
+    if (bulle) {
+      bulle.insertAdjacentHTML("afterbegin", `<div class="voice"><audio controls src="${URL.createObjectURL(blob)}"></audio></div>`);
+    }
+    try {
+      const reponse = await fetch("/api/upload", { method: "POST", body: form, credentials: "same-origin" });
+      if (!reponse.ok) throw new Error("upload");
+      const data = await reponse.json();
+      const lien = bulle && bulle.querySelector("audio");
+      if (lien && data.url) lien.src = data.url;
+      if (data.reply) addMessage("assistant", data.reply);
+    } catch {
+      toast("Le vocal n'est pas parti. Réessaie.");
+    }
+  }
+
+  if (els.mic) els.mic.addEventListener("click", basculerVocal);
+
   els.file.addEventListener("change", () => {
     sendFile(els.file.files[0]);
     els.file.value = "";

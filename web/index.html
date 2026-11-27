@@ -64,7 +64,10 @@
       <button type="button" id="attach" class="composer-btn" aria-label="Envoyer une photo">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8-8a3.4 3.4 0 0 1 4.8 4.8l-8 8a1.8 1.8 0 0 1-2.5-2.5l7.3-7.3"/></svg>
       </button>
-      <input type="file" id="file" accept="image/*,.pdf,.zip" hidden />
+      <input type="file" id="file" accept="image/*,.pdf,.zip,audio/*" hidden />
+      <button type="button" id="mic" class="composer-btn" aria-label="Enregistrer un message vocal">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
       <textarea id="input" rows="1" placeholder="Écris ton message…" autocomplete="off"></textarea>
       <button id="send" type="submit" aria-label="Envoyer">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6l.1 6.5L15 12 3.5 13.9z"/></svg>

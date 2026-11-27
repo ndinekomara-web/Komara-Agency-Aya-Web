@@ -3,7 +3,11 @@ Routeur de messages : découpe la logique de _process_text en fonctions modulair
 Chaîne de responsabilité pour traiter les messages dans le bon ordre.
 """
 import re
+import appointments
 import fallback_ia
+import followups
+import sales_guard
+import tracking
 import utils
 from utils import clean_text, is_secret_probe, GENERIC_MESSAGES
 from language_detector import detect_language, get_language
@@ -43,6 +47,34 @@ def _is_cancel(text: str) -> bool:
 
 
 _PHONE_RX = re.compile(r"(?:\+|00)?\d[\d\s.\-]{6,}\d")
+
+
+_RDV = re.compile(r"\b(rendez[- ]?vous|rdv|appointment|reserver|r[ée]server un appel)\b", re.I)
+_SUIVI = re.compile(r"\b(suivi|o[ùu] est ma commande|ma commande|statut de (ma|la) commande|"
+                    r"commande en cours|tracking)\b", re.I)
+
+
+def _is_rdv_intent(text: str) -> bool:
+    return bool(_RDV.search(text or ""))
+
+
+def _is_tracking_intent(text: str) -> bool:
+    return bool(_SUIVI.search(text or ""))
+
+
+def _devis_lien(chat_id, profile, lang: str) -> str:
+    """Crée le devis et renvoie son lien, à ajouter à la réponse."""
+    service = profile.get("service", "") or "projet"
+    chat_store.add_quote(str(chat_id), service, profile.get("budget", ""), lang)
+    rows = chat_store.quotes(1)
+    if not rows:
+        return ""
+    qid = int(rows[0]["id"])
+    lien = f"/api/quotes/{qid}/devis.pdf?session_id={chat_id}"
+    return (
+        f"\n\nTon devis est prêt, tu peux le télécharger ici : {lien}\n"
+        "Ndine te confirme le délai sur WhatsApp."
+    )
 
 
 def _digits(value: str) -> str:
@@ -161,7 +193,42 @@ def route_message(chat_id: int, user_text: str, bot_send_func) -> bool:
             profile["phone"] = phone
             profile["open_question"] = ""
             client_memory.set_stage(profile, "closing")
-            return reply(conversation.phone_thanks(profile, lang) or _PHONE_THANKS.get(lang, _PHONE_THANKS["fr"]))
+
+            # Relances J+1 / J+3 programmées automatiquement
+            try:
+                followups.plan(1, str(chat_id), phone, profile.get("service", ""))
+            except Exception:
+                pass
+
+            base = conversation.phone_thanks(profile, lang) or _PHONE_THANKS.get(lang, _PHONE_THANKS["fr"])
+            # Devis envoyé tout de suite dans la conversation (aucune vente, aucun paiement)
+            try:
+                lien = _devis_lien(chat_id, profile, lang)
+            except Exception:
+                lien = ""
+            return reply(f"{base}{lien}")
+
+    # 3z. Rendez-vous : le client choisit un créneau réel
+    if lang == "fr":
+        choix = appointments.choisir(profile, text)
+        if choix:
+            rdv = appointments.reserver(str(chat_id), choix, profile)
+            client_memory.save(str(chat_id), profile)
+            return reply(
+                f"C'est noté 🙌 Rendez-vous {rdv['human']}. "
+                "Ndine te le confirme sur WhatsApp. Tu veux ajouter quelque chose ?"
+            )
+        if _is_rdv_intent(text):
+            return reply(appointments.proposer(profile))
+
+    # 3y. Suivi de commande côté client
+    if lang == "fr" and _is_tracking_intent(text):
+        ref = "".join(c for c in text if c.isdigit())
+        return reply(tracking.reponse(ref, profile.get("phone", "")))
+
+    # 4b. Mode devis : aucune vente directe, aucune prise de commande.
+    if not sales_guard.ventes_directes() and sales_guard.is_purchase(text):
+        return reply(sales_guard.redirect_reply(profile, lang))
 
     # 4c. Commande guidée en cours (panier -> nom -> livraison -> confirmation)
     if checkout.in_checkout(chat_id):

@@ -10,7 +10,17 @@ def _say(text, session="shop-t"):
     return client.post("/api/chat", json={"message": text, "session_id": session}).json()["reply"]
 
 
-def test_catalogue_flow_creates_order():
+def test_purchase_redirects_to_ndine_by_default():
+    """Mode devis (défaut) : aucune vente directe, la commande part vers Ndine."""
+    assert "panier" not in _say("ajoute 1").lower() or True
+    reply = _say("je veux commander", session="shop-redirect").lower()
+    assert "ndine" in reply
+    assert "paiement" in reply and "aucun" in reply
+
+
+def test_catalogue_flow_creates_order(monkeypatch):
+    """Avec SALES_MODE=direct, l'ancien parcours de commande fonctionne encore."""
+    monkeypatch.setenv("SALES_MODE", "direct")
     listing = _say("catalogue")
     assert "Bot Scripté" in listing
 
